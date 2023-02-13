@@ -1744,10 +1744,10 @@ public class GriefPrevention extends JavaPlugin
                 for (Claim c : data.getClaims()) {
                     if (c != null && c.parent == null) {
                         if (c.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims) {
-                            GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(c.lesserBoundaryCorner));
+                            GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(c));
                         } else if (!c.bannedPlayerIds.contains(targetId)) {
                             if (c.bannedPlayerIds.size() >= 512) {
-                                GriefPrevention.sendMessage(player, ChatColor.RED, "Too many players banned from claim: " + getfriendlyLocationString(c.lesserBoundaryCorner));
+                                GriefPrevention.sendMessage(player, ChatColor.RED, "Too many players banned from claim: " + getfriendlyLocationString(c));
                             } else {
                                 c.bannedPlayerIds.add(targetId);
                                 c.dropPermission(targetId.toString());
@@ -1767,7 +1767,7 @@ public class GriefPrevention extends JavaPlugin
                     return true;
                 } else {
                     if (claim.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims) {
-                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(claim.lesserBoundaryCorner));
+                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(claim));
                         return true;
                     } else if (!claim.bannedPlayerIds.contains(targetId)) {
                         if (claim.bannedPlayerIds.size() >= 512) {
@@ -3566,7 +3566,7 @@ public class GriefPrevention extends JavaPlugin
         Claim claim = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null);
         int attempts = 0;
         while (claim != null && claim.checkBanned(who) || !candidateLocation.getBlock().getRelative(0, -2, 0).getType().isOccluding()) {
-            Block highest = candidateLocation.getWorld().getHighestBlockAt((claim == null ? candidateLocation : claim.lesserBoundaryCorner).clone().add(-1, 0, -1));
+            Block highest = candidateLocation.getWorld().getHighestBlockAt((claim == null ? candidateLocation : claim.getGreaterBoundaryCorner()).clone().add(-1, 0, -1));
             while (!highest.getType().isOccluding()) {
                 if (attempts > 64) {
                     candidateLocation = who.getBedSpawnLocation();

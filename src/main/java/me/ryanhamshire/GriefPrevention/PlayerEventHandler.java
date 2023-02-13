@@ -1122,7 +1122,7 @@ class PlayerEventHandler implements Listener
             PlayerData playerData = dataStore.getPlayerData(event.getPlayer().getUniqueId());
             Claim toClaim = dataStore.getClaimAt(event.getTo(), false, playerData.lastClaim);
             if (checkBannedFromClaim(toClaim, playerData)) {
-                if (toClaim.contains(event.getFrom(), false, false)) {
+                if (toClaim.contains(event.getFrom(), false, false) || toClaim.getBounds().getMaxY() < event.getFrom().getBlockY()) {
                     GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer(), event.getFrom());
                 } else {
                     event.setCancelled(true);
