@@ -18,13 +18,9 @@
 
 package me.ryanhamshire.GriefPrevention;
 
-import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import me.ryanhamshire.GriefPrevention.events.ClaimPermissionCheckEvent;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
+import org.bukkit.*;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -39,16 +35,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Supplier;
 
 //represents a player claim
@@ -56,6 +43,8 @@ import java.util.function.Supplier;
 //only claims which have been added to the datastore have any effect
 public class Claim
 {
+    public static final int _2D_HEIGHT = 32_000_000;
+
     //two locations, which together define the boundaries of the claim
     //note that the upper Y value is always ignored, because claims ALWAYS extend up to the sky
     Location lesserBoundaryCorner;
@@ -128,9 +117,7 @@ public class Claim
     {
         if (this.isAdminClaim()) return false;
 
-        if (this.checkPermission(defender, ClaimPermission.Access, null) != null) return false;
-
-        return true;
+        return this.checkPermission(defender, ClaimPermission.Access, null) == null;
     }
 
     //removes any lava above sea level in a claim
@@ -818,13 +805,42 @@ public class Claim
         return true;
     }
 
+    public boolean isCorner(Block block) {
+        return isCorner(block.getX(), block.getY(), block.getZ());
+    }
+
+    public boolean isCorner(int x, int y, int z) {
+        return (x == lesserBoundaryCorner.getBlockX() || x == greaterBoundaryCorner.getBlockX()) && (z == lesserBoundaryCorner.getBlockZ() || z == greaterBoundaryCorner.getBlockZ())
+                && (!is3D() || y == lesserBoundaryCorner.getBlockY() || y == greaterBoundaryCorner.getBlockY());
+    }
+
+    public boolean is3D() {
+        return greaterBoundaryCorner.getBlockY() != _2D_HEIGHT;
+    }
+
     //whether or not two claims overlap
     //used internally to prevent overlaps when creating claims
     boolean overlaps(Claim otherClaim)
     {
         if (!Objects.equals(this.lesserBoundaryCorner.getWorld(), otherClaim.getLesserBoundaryCorner().getWorld())) return false;
 
-        return new BoundingBox(this).intersects(new BoundingBox(otherClaim));
+        if (is3D() && otherClaim.is3D()) {
+            return new BoundingBox(this).intersects(new BoundingBox(otherClaim));
+        } else {
+            return new BoundingBox(this).intersects2d(new BoundingBox(otherClaim));
+        }
+    }
+
+    public boolean isInside(Block block) {
+        return isInside(block.getX(), block.getY(), block.getZ());
+    }
+
+    public boolean isInside(int x, int y, int z) {
+        int maxX = greaterBoundaryCorner.getBlockX(), maxY = greaterBoundaryCorner.getBlockY(), maxZ = greaterBoundaryCorner.getBlockZ();
+        int minX = lesserBoundaryCorner.getBlockX(), minY = lesserBoundaryCorner.getBlockY(), minZ = lesserBoundaryCorner.getBlockZ();
+        return minX <= x && maxX >= x
+                && minY <= y && maxY >= y
+                && minZ <= z && maxZ >= z;
     }
 
     //whether more entities may be added to a claim
@@ -998,4 +1014,18 @@ public class Claim
     {
         return DataStore.getChunkHashes(this);
     }
+
+    @Override
+    public String toString() {
+        return "Claim{" +
+                "lesserBoundaryCorner=%d,%d,%d".formatted(lesserBoundaryCorner.getBlockX(), lesserBoundaryCorner.getBlockY(), lesserBoundaryCorner.getBlockZ()) +
+                ", greaterBoundaryCorner=%d,%d,%d".formatted(greaterBoundaryCorner.getBlockX(), greaterBoundaryCorner.getBlockY(), greaterBoundaryCorner.getBlockZ()) +
+                ", world=" + lesserBoundaryCorner.getWorld().getName() +
+                ", id=" + id +
+                ", ownerID=" + ownerID +
+                ", inheritNothing=" + inheritNothing +
+                (parent == null ? ", children" + children : ", parentId=" + parent.id) +
+                '}';
+    }
+
 }

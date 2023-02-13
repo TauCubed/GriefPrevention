@@ -72,6 +72,8 @@ class AutoExtendClaimTask implements Runnable
                 new AutoExtendClaimTask(claim, snapshots, world.getEnvironment(), lowestLootableTile));
     }
 
+    private final int extendIntoGroundDistance = GriefPrevention.instance.config_claims_claimsExtendIntoGroundDistance;
+
     private final Claim claim;
     private final ArrayList<ChunkSnapshot> chunks;
     private final Environment worldType;
@@ -112,19 +114,22 @@ class AutoExtendClaimTask implements Runnable
 
         for (ChunkSnapshot chunk : this.chunks)
         {
-            y = findLowerBuiltY(chunk, y);
+            y = Math.min(y, findLowerBuiltY(chunk, y));
 
             // If already at minimum Y, stop searching.
             if (yTooSmall(y)) return this.minY;
         }
 
+        y -= extendIntoGroundDistance;
+        if (yTooSmall(y)) return this.minY;
         return y;
     }
 
     private int findLowerBuiltY(ChunkSnapshot chunkSnapshot, int y)
     {
         // Specifically not using yTooSmall here to allow protecting bottom layer.
-        nextY: for (int newY = y - 1; newY >= this.minY; newY--)
+        int ySinceLastPlayerBlock = 0;
+        nextY: for (int newY = y - 1; newY >= this.minY && ySinceLastPlayerBlock++ < 16; newY--)
         {
             for (int x = 0; x < 16; x++)
             {
@@ -132,6 +137,7 @@ class AutoExtendClaimTask implements Runnable
                 {
                     // If the block is natural, ignore it and continue searching the same Y level.
                     if (!isPlayerBlock(chunkSnapshot, x, newY, z)) continue;
+                    ySinceLastPlayerBlock = 0;
 
                     // If the block is player-placed and we're at the minimum Y allowed, we're done searching.
                     if (yTooSmall(y)) return this.minY;

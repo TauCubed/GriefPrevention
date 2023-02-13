@@ -24,6 +24,7 @@ public enum ShovelMode
     Basic,
     Admin,
     Subdivide,
+    Subdivide3d,
     RestoreNature,
     RestoreNatureAggressive,
     RestoreNatureFill

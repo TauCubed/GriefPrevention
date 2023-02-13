@@ -39,7 +39,12 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
     }
 
     @Override
-    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary)
+    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary) {
+        return addCornerElements(boundary, false);
+    }
+
+    @Override
+    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary, boolean is3d)
     {
         return addBlockElement(switch (boundary.type())
         {
@@ -51,12 +56,16 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
                 yield fakeData;
             }
             default -> Material.GLOWSTONE.createBlockData();
-        });
+        }, is3d);
     }
 
+    @Override
+    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary) {
+        return addSideElements(boundary, false);
+    }
 
     @Override
-    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary)
+    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary, boolean is3d)
     {
         // Determine BlockData from boundary type to cache for reuse in function.
         return addBlockElement(switch (boundary.type())
@@ -66,7 +75,7 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
             case INITIALIZE_ZONE, NATURE_RESTORATION_ZONE -> Material.DIAMOND_BLOCK.createBlockData();
             case CONFLICT_ZONE -> Material.NETHERRACK.createBlockData();
             default -> Material.GOLD_BLOCK.createBlockData();
-        });
+        }, is3d);
     }
 
     /**
@@ -75,11 +84,11 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
      * @param fakeData the fake {@link BlockData}
      * @return the function for determining a visible fake block location
      */
-    private @NotNull Consumer<@NotNull IntVector> addBlockElement(@NotNull BlockData fakeData)
+    protected @NotNull Consumer<@NotNull IntVector> addBlockElement(@NotNull BlockData fakeData, boolean is3d)
     {
         return vector -> {
             // Obtain visible location from starting point.
-            Block visibleLocation = getVisibleLocation(vector);
+            Block visibleLocation = is3d ? world.getBlockAt(vector.x(), vector.y(), vector.z()) : getVisibleLocation(vector);
             // Create an element using our fake data and the determined block's real data.
             elements.add(new FakeBlockElement(new IntVector(visibleLocation), visibleLocation.getBlockData(), fakeData));
         };
@@ -91,7 +100,7 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
      * @param vector the {@link IntVector} of the display location
      * @return the located {@link Block}
      */
-    private Block getVisibleLocation(@NotNull IntVector vector)
+    protected Block getVisibleLocation(@NotNull IntVector vector)
     {
         Block block = vector.toBlock(world);
         BlockFace direction = (isTransparent(block)) ? BlockFace.DOWN : BlockFace.UP;

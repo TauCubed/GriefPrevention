@@ -21,18 +21,9 @@ package me.ryanhamshire.GriefPrevention;
 import com.google.common.io.Files;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
-import me.ryanhamshire.GriefPrevention.events.ClaimResizeEvent;
-import me.ryanhamshire.GriefPrevention.events.ClaimCreatedEvent;
-import me.ryanhamshire.GriefPrevention.events.ClaimDeletedEvent;
-import me.ryanhamshire.GriefPrevention.events.ClaimExtendEvent;
-import me.ryanhamshire.GriefPrevention.events.ClaimTransferEvent;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
+import me.ryanhamshire.GriefPrevention.events.*;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
+import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.AnimalTamer;
@@ -42,28 +33,11 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 //singleton class which manages all GriefPrevention data (except for config options)
 public abstract class DataStore
@@ -756,7 +730,8 @@ public abstract class DataStore
     synchronized public Claim getClaimAt(Location location, boolean ignoreHeight, boolean ignoreSubclaims, Claim cachedClaim)
     {
         //check cachedClaim guess first.  if it's in the datastore and the location is inside it, we're done
-        if (cachedClaim != null && cachedClaim.inDataStore && cachedClaim.contains(location, ignoreHeight, !ignoreSubclaims))
+        if (cachedClaim != null && cachedClaim.inDataStore &&
+                (ignoreSubclaims || cachedClaim.parent == null ? cachedClaim.contains(location, ignoreHeight, !ignoreSubclaims) : cachedClaim.contains(location, !cachedClaim.is3D() && ignoreHeight, false)))
             return cachedClaim;
 
         //find a top level claim
@@ -764,23 +739,19 @@ public abstract class DataStore
         ArrayList<Claim> claimsInChunk = this.chunksToClaimsMap.get(chunkID);
         if (claimsInChunk == null) return null;
 
-        for (Claim claim : claimsInChunk)
-        {
-            if (claim.inDataStore && claim.contains(location, ignoreHeight, false))
-            {
+        for (Claim claim : claimsInChunk) {
+            if (claim.inDataStore && claim.contains(location, true, false)) {
                 // If ignoring subclaims, claim is a match.
-                if (ignoreSubclaims) return claim;
-
-                //when we find a top level claim, if the location is in one of its subdivisions,
-                //return the SUBDIVISION, not the top level claim
-                for (int j = 0; j < claim.children.size(); j++)
-                {
-                    Claim subdivision = claim.children.get(j);
-                    if (subdivision.inDataStore && subdivision.contains(location, ignoreHeight, false))
-                        return subdivision;
+                if (!ignoreSubclaims) {
+                    //when we find a top level claim, if the location is in one of its subdivisions,
+                    //return the SUBDIVISION, not the top level claim
+                    for (int j = 0; j < claim.children.size(); j++) {
+                        Claim subdivision = claim.children.get(j);
+                        // never ignore height of 3d subclaims
+                        if (subdivision.inDataStore && subdivision.contains(location, !subdivision.is3D() && ignoreHeight, false)) return subdivision;
+                    }
                 }
-
-                return claim;
+                if (ignoreHeight || claim.contains(location, false, false)) return claim;
             }
         }
 
@@ -931,7 +902,7 @@ public abstract class DataStore
         }
 
         //creative mode claims always go to bedrock
-        if (GriefPrevention.instance.config_claims_worldModes.get(world) == ClaimsMode.Creative)
+        if (GriefPrevention.instance.config_claims_worldModes.get(world) == ClaimsMode.Creative && bigy == Claim._2D_HEIGHT)
         {
             smally = world.getMinHeight();
         }
@@ -1001,6 +972,11 @@ public abstract class DataStore
         }
         //otherwise add this new claim to the data store to make it effective
         this.addClaim(newClaim, true);
+
+        // extend parent claim down to subdivision level
+        if (parent != null && smally < parent.lesserBoundaryCorner.getBlockY()) {
+            setNewDepth(parent, smally - GriefPrevention.instance.config_claims_claimsExtendIntoGroundDistance);
+        }
 
         //then return success along with reference to new claim
         result.succeeded = true;
@@ -1084,48 +1060,52 @@ public abstract class DataStore
     }
 
     /**
-     * Helper method for sanitizing claim depth to find the minimum expected value.
+     * Helper method for sanitizing claim depth to clamp to make sure it doesn't go below the expected value
      *
      * @param claim the claim
-     * @param newDepth the new depth
+     * @param requestedDepth the new depth
      * @return the sanitized new depth
      */
-    private int sanitizeClaimDepth(Claim claim, int newDepth) {
-        if (claim.parent != null) claim = claim.parent;
-
-        // Get the old depth including the depth of the lowest subdivision.
-        int oldDepth = Math.min(
-                claim.getLesserBoundaryCorner().getBlockY(),
-                claim.children.stream().mapToInt(child -> child.getLesserBoundaryCorner().getBlockY())
-                        .min().orElse(Integer.MAX_VALUE));
-
-        // Use the lowest of the old and new depths.
-        newDepth = Math.min(newDepth, oldDepth);
-        // Cap depth to maximum depth allowed by the configuration.
-        newDepth = Math.max(newDepth, GriefPrevention.instance.config_claims_maxDepth);
-        // Cap the depth to the world's minimum height.
-        World world = Objects.requireNonNull(claim.getLesserBoundaryCorner().getWorld());
-        newDepth = Math.max(newDepth, world.getMinHeight());
-
-        return newDepth;
+    private int sanitizeClaimDepth(Claim claim, int requestedDepth) {
+        requestedDepth = Math.max(requestedDepth, claim.lesserBoundaryCorner.getWorld().getMinHeight());
+        requestedDepth = Math.max(requestedDepth, GriefPrevention.instance.config_claims_maxDepth);
+        return requestedDepth;
     }
 
     /**
      * Helper method for sanitizing and setting claim depth. Saves affected claims.
+     * Will auto-extend 2d parent claims depth or clamp claim depth to 3d parent claims depth
      *
      * @param claim the claim
      * @param newDepth the new depth
      */
-    private void setNewDepth(Claim claim, int newDepth) {
-        if (claim.parent != null) claim = claim.parent;
+    private int setNewDepth(Claim claim, int newDepth) {
+        int depth = sanitizeClaimDepth(claim, newDepth);
+        if (claim.parent != null) {
+            if (claim.parent.is3D() || !claim.is3D()) {
+                depth = Math.max(claim.parent.lesserBoundaryCorner.getBlockY(), depth);
+            } else if (depth < claim.parent.lesserBoundaryCorner.getBlockY()) {
+                setNewDepth(claim.parent, depth);
+            }
+        }
 
-        final int depth = sanitizeClaimDepth(claim, newDepth);
+        claim.lesserBoundaryCorner.setY(depth);
+        claim.greaterBoundaryCorner.setY(Math.max(claim.greaterBoundaryCorner.getBlockY(), depth));
+        saveClaim(claim);
 
-        Stream.concat(Stream.of(claim), claim.children.stream()).forEach(localClaim -> {
-            localClaim.lesserBoundaryCorner.setY(depth);
-            localClaim.greaterBoundaryCorner.setY(Math.max(localClaim.greaterBoundaryCorner.getBlockY(), depth));
-            this.saveClaim(localClaim);
-        });
+        for (Claim child : claim.children) {
+            boolean mod = false;
+            if (child.lesserBoundaryCorner.getBlockY() < depth || !child.is3D()) {
+                child.lesserBoundaryCorner.setY(depth);
+                mod = true;
+            }
+            if (child.greaterBoundaryCorner.getBlockY() < depth) {
+                child.greaterBoundaryCorner.setY(depth);
+                mod = true;
+            }
+            if (mod) saveClaim(child);
+        }
+        return depth;
     }
 
     //starts a siege on a claim
@@ -1384,14 +1364,58 @@ public abstract class DataStore
             // copy the boundary from the claim created in the dry run of createClaim() to our existing claim
             claim.lesserBoundaryCorner = result.claim.lesserBoundaryCorner;
             claim.greaterBoundaryCorner = result.claim.greaterBoundaryCorner;
-            // Sanitize claim depth, expanding parent down to the lowest subdivision and subdivisions down to parent.
+            // Update claim depth and parent depth
             // Also saves affected claims.
             setNewDepth(claim, claim.getLesserBoundaryCorner().getBlockY());
+            // make sure all subdivisions fit inside the parent claim
+            truncateSubdivisions(claim, true);
             result.claim = claim;
             addToChunkClaimMap(claim); // add the new boundary to the chunk cache
         }
 
         return result;
+    }
+
+    void truncateSubdivisions(Claim claim, boolean saveIfModified) {
+        int lx = claim.lesserBoundaryCorner.getBlockX(), ly = claim.lesserBoundaryCorner.getBlockY(), lz = claim.lesserBoundaryCorner.getBlockZ();
+        int gx = claim.greaterBoundaryCorner.getBlockX(), gy = claim.greaterBoundaryCorner.getBlockY(), gz = claim.greaterBoundaryCorner.getBlockZ();
+        Iterator<Claim> it = claim.children.iterator();
+        while (it.hasNext()) {
+            Claim child = it.next();
+            boolean mod = false;
+            if (child.lesserBoundaryCorner.getBlockX() < lx) {
+                child.lesserBoundaryCorner.setX(lx);
+                mod = true;
+            }
+            if (child.lesserBoundaryCorner.getBlockY() < ly) {
+                child.lesserBoundaryCorner.setY(ly);
+                mod = true;
+            }
+            if (child.lesserBoundaryCorner.getBlockZ() < lz) {
+                child.lesserBoundaryCorner.setZ(lz);
+                mod = true;
+            }
+
+            if (child.greaterBoundaryCorner.getBlockX() > gx) {
+                child.greaterBoundaryCorner.setX(gx);
+                mod = true;
+            }
+            if (child.greaterBoundaryCorner.getBlockY() > gy) {
+                child.greaterBoundaryCorner.setY(gy);
+                mod = true;
+            }
+            if (child.greaterBoundaryCorner.getBlockZ() > gz) {
+                child.greaterBoundaryCorner.setZ(gz);
+                mod = true;
+            }
+
+            BoundingBox box = new BoundingBox(child);
+            if (box.getLength() < 1 || box.getWidth() < 1 || box.getHeight() < 1) {
+                it.remove();
+                removeFromChunkClaimMap(child);
+                deleteClaimFromSecondaryStorage(child);
+            } else if (mod && saveIfModified) saveClaim(child);
+        }
     }
 
     void resizeClaimWithChecks(Player player, PlayerData playerData, int newx1, int newx2, int newy1, int newy2, int newz1, int newz2)
@@ -1810,6 +1834,8 @@ public abstract class DataStore
         this.addDefault(defaults, Messages.SubclaimUnrestricted, "This subclaim's permissions will now inherit from the parent claim", null);
 
         this.addDefault(defaults, Messages.NetherPortalTrapDetectionMessage, "It seems you might be stuck inside a nether portal. We will rescue you in a few seconds if that is the case!", "Sent to player on join, if they left while inside a nether portal.");
+
+        this.addDefault(defaults, Messages.PistonExploded, "The piston at {0} exploded because it couldn't enter the claim at {1}", "{0} is the xyz of the piston, {1} is the claim location");
 
         //load the config file
         FileConfiguration config = YamlConfiguration.loadConfiguration(new File(messagesFilePath));

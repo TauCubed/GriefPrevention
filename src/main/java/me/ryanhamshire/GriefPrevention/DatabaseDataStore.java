@@ -25,20 +25,10 @@ import org.bukkit.World;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 
 //manages data stored in the file system
 public class DatabaseDataStore extends DataStore
@@ -346,6 +336,7 @@ public class DatabaseDataStore extends DataStore
                 String managersString = results.getString("managers");
                 List<String> managerNames = Arrays.asList(managersString.split(";"));
                 managerNames = this.convertNameListToUUIDList(managerNames);
+
                 Claim claim = new Claim(lesserBoundaryCorner, greaterBoundaryCorner, ownerID, builderNames, containerNames, accessorNames, managerNames, inheritNothing, claimID);
 
                 if (removeClaim)
@@ -399,6 +390,19 @@ public class DatabaseDataStore extends DataStore
             this.refreshDataConnection();
             statement = this.databaseConnection.createStatement();
             statement.execute("DELETE FROM griefprevention_claimdata WHERE id = '-1'");
+        }
+
+        // 3dsubclaims conversion
+        for (Claim parent : this.claims) {
+            if (parent.parent == null && parent.greaterBoundaryCorner.getBlockY() != Claim._2D_HEIGHT) {
+                parent.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
+                for (Claim child : parent.children) {
+                    child.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
+                    child.lesserBoundaryCorner.setY(parent.lesserBoundaryCorner.getBlockY());
+                    saveClaim(child);
+                }
+                saveClaim(parent);
+            }
         }
 
         super.initialize();
@@ -689,17 +693,16 @@ public class DatabaseDataStore extends DataStore
     /**
      * Concats an array to a string divided with the ; sign
      *
-     * @param input Arraylist with strings to concat
+     * @param input List with strings to concat
      * @return String with all values from input array
      */
-    private String storageStringBuilder(ArrayList<String> input)
+    private String storageStringBuilder(List<String> input)
     {
-        String output = "";
-        for (String string : input)
-        {
-            output += string + ";";
+        StringBuilder sb = new StringBuilder();
+        for (String string : input) {
+            sb.append(string).append(";");
         }
-        return output;
+        return sb.toString();
     }
 
 }

@@ -124,7 +124,7 @@ class RestoreNatureExecutionTask implements Runnable
         {
             BoundaryVisualization.visualizeArea(
                     player,
-                    new BoundingBox(lesserCorner, greaterCorner),
+                    new BoundingBox(lesserCorner.getBlockX(), Integer.MIN_VALUE, lesserCorner.getBlockZ(), greaterCorner.getBlockX(), Integer.MAX_VALUE, greaterCorner.getBlockZ()),
                     VisualizationType.NATURE_RESTORATION_ZONE);
         }
     }

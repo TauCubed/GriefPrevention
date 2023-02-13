@@ -6,6 +6,7 @@ import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationProvider;
 import com.griefprevention.visualization.impl.AntiCheatCompatVisualization;
 import com.griefprevention.visualization.impl.FakeBlockVisualization;
+import com.griefprevention.visualization.impl.FakeFallingBlockVisualization;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -23,6 +24,7 @@ public class BoundaryVisualizationEvent extends PlayerEvent
 
     public static final VisualizationProvider DEFAULT_PROVIDER = (world, visualizeFrom, height) ->
     {
+        if (GriefPrevention.instance.config_visualizationGlowingFallingBlock) return new FakeFallingBlockVisualization(world, visualizeFrom, height);
         if (GriefPrevention.instance.config_visualizationAntiCheatCompat)
         {
             return new AntiCheatCompatVisualization(world, visualizeFrom, height);

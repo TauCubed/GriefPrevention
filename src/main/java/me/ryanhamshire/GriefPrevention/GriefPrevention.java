@@ -24,20 +24,11 @@ import me.ryanhamshire.GriefPrevention.DataStore.NoTransferException;
 import me.ryanhamshire.GriefPrevention.events.PreventBlockBreakEvent;
 import me.ryanhamshire.GriefPrevention.events.SaveTrappedPlayerEvent;
 import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
+import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.metrics.MetricsHandler;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.BanList;
+import org.bukkit.*;
 import org.bukkit.BanList.Type;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.FluidCollisionMode;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Statistic;
-import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -56,17 +47,11 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.UUID;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -200,6 +185,7 @@ public class GriefPrevention extends JavaPlugin
     public ArrayList<String> config_eavesdrop_whisperCommands;        //list of whisper commands to eavesdrop on
 
     public boolean config_visualizationAntiCheatCompat;              // whether to engage compatibility mode for anti-cheat plugins
+    public boolean config_visualizationGlowingFallingBlock;              // if we should visualize things with glowing falling blocks (overrides antiCheatCompat as it does not use fake blocks)
 
     public boolean config_smartBan;                                    //whether to ban accounts which very likely owned by a banned player
 
@@ -376,6 +362,11 @@ public class GriefPrevention extends JavaPlugin
         //vault-based economy integration
         economyHandler = new EconomyHandler(this);
         pluginManager.registerEvents(economyHandler, this);
+
+        //packet listeners
+        if (Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
+            new PacketListeners().register();
+        }
 
         //cache offline players
         OfflinePlayer[] offlinePlayers = this.getServer().getOfflinePlayers();
@@ -633,6 +624,11 @@ public class GriefPrevention extends JavaPlugin
         whisperCommandsToMonitor = config.getString("GriefPrevention.Spam.WhisperSlashCommands", whisperCommandsToMonitor);
 
         this.config_visualizationAntiCheatCompat = config.getBoolean("GriefPrevention.VisualizationAntiCheatCompatMode", false);
+        this.config_visualizationGlowingFallingBlock = config.getBoolean("GriefPrevention.VisualizationGlowingFallingBlock", true);
+        if (this.config_visualizationGlowingFallingBlock && !Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
+            this.config_visualizationGlowingFallingBlock = false;
+            log.warning("Could not enable falling block visualization as the ProtocolLib plugin is missing.");
+        }
         this.config_smartBan = config.getBoolean("GriefPrevention.SmartBan", true);
         this.config_trollFilterEnabled = config.getBoolean("GriefPrevention.Mute New Players Using Banned Words", true);
         this.config_ipLimit = config.getInt("GriefPrevention.MaxPlayersPerIpAddress", 3);
@@ -1185,15 +1181,17 @@ public class GriefPrevention extends JavaPlugin
                 return true;
             }
 
+            boolean isSubclaim = claim.parent != null;
+
             //determine new corner coordinates
             org.bukkit.util.Vector direction = player.getLocation().getDirection();
-            if (direction.getY() > .75)
+            if (!isSubclaim && direction.getY() > .75)
             {
                 GriefPrevention.sendMessage(player, TextMode.Info, Messages.ClaimsExtendToSky);
                 return true;
             }
 
-            if (direction.getY() < -.75)
+            if (!isSubclaim && direction.getY() < -.75)
             {
                 GriefPrevention.sendMessage(player, TextMode.Info, Messages.ClaimsAutoExtendDownward);
                 return true;
@@ -1208,8 +1206,17 @@ public class GriefPrevention extends JavaPlugin
             int newz1 = lc.getBlockZ();
             int newz2 = gc.getBlockZ();
 
+            // if subclaim & changing Y only
+            if (isSubclaim && Math.abs(direction.getY()) > .6) {
+                if (direction.getY() > 0) {
+                    newy2 += amount;
+                } else {
+                    newy1 -= amount;
+                }
+            }
+
             //if changing Z only
-            if (Math.abs(direction.getX()) < .3)
+            else if (Math.abs(direction.getX()) < .3)
             {
                 if (direction.getZ() > 0)
                 {
@@ -1972,6 +1979,18 @@ public class GriefPrevention extends JavaPlugin
         {
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
             playerData.shovelMode = ShovelMode.Subdivide;
+            playerData.claimSubdividing = null;
+            GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionMode);
+            GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionVideo2, DataStore.SUBDIVISION_VIDEO_URL);
+
+            return true;
+        }
+
+        //subdivideclaims
+        else if (cmd.getName().equalsIgnoreCase("subdivideclaims3d") && player != null)
+        {
+            PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
+            playerData.shovelMode = ShovelMode.Subdivide3d;
             playerData.claimSubdividing = null;
             GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionMode);
             GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionVideo2, DataStore.SUBDIVISION_VIDEO_URL);
@@ -3240,6 +3259,12 @@ public class GriefPrevention extends JavaPlugin
         {
             UUID playerID = player.getUniqueId();
             PlayerData playerData = this.dataStore.getPlayerData(playerID);
+            try {
+                BoundaryVisualization visualization = playerData.getVisibleBoundaries();
+                if (visualization != null) visualization.revert(player);
+            } catch (Exception e) {
+                log.log(Level.WARNING, "Error while removing visualization for %s".formatted(player.getName()), e);
+            }
             this.dataStore.savePlayerDataSync(playerID, playerData);
         }
 
@@ -3310,10 +3335,14 @@ public class GriefPrevention extends JavaPlugin
     }
 
     //moves a player from the claim he's in to a nearby wilderness location
-    public Location ejectPlayer(Player player)
+    public Location ejectPlayer(Player player) {
+        return ejectPlayer(player, player.getLocation());
+    }
+
+    //moves a player from the claim he's in to a nearby wilderness location
+    public Location ejectPlayer(Player player, Location candidateLocation)
     {
         //look for a suitable location
-        Location candidateLocation = player.getLocation();
         while (true)
         {
             Claim claim = null;
@@ -3331,10 +3360,19 @@ public class GriefPrevention extends JavaPlugin
             {
                 //find a safe height, a couple of blocks above the surface
                 GuaranteeChunkLoaded(candidateLocation);
-                Block highestBlock = candidateLocation.getWorld().getHighestBlockAt(candidateLocation.getBlockX(), candidateLocation.getBlockZ());
-                Location destination = new Location(highestBlock.getWorld(), highestBlock.getX(), highestBlock.getY() + 2, highestBlock.getZ());
-                player.teleport(destination);
-                return destination;
+                candidateLocation = candidateLocation.getWorld().getHighestBlockAt(candidateLocation.getBlockX(), candidateLocation.getBlockZ()).getLocation();
+                if (!candidateLocation.getBlock().getType().isOccluding() || !candidateLocation.getWorld().getWorldBorder().isInside(candidateLocation)) {
+                    candidateLocation = player.getBedSpawnLocation();
+                    if (candidateLocation == null ||
+                            GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null) != null) {
+                        candidateLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
+                    }
+                } else {
+                    candidateLocation.add(0, 2, 0);
+                }
+                candidateLocation.add(0.5, 0, 0.5);
+                player.teleport(candidateLocation);
+                return candidateLocation;
             }
         }
     }

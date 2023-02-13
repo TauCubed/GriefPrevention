@@ -18,20 +18,14 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
+import com.griefprevention.visualization.impl.FakeFallingBlockElement;
+import com.griefprevention.visualization.impl.FakeFallingBlockVisualization;
 import me.ryanhamshire.GriefPrevention.events.ClaimInspectionEvent;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import org.bukkit.BanList;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Tag;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -39,20 +33,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.command.Command;
-import org.bukkit.entity.AbstractHorse;
-import org.bukkit.entity.Animals;
-import org.bukkit.entity.Creature;
-import org.bukkit.entity.Donkey;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Fish;
-import org.bukkit.entity.Hanging;
-import org.bukkit.entity.Item;
-import org.bukkit.entity.Llama;
-import org.bukkit.entity.Mule;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Tameable;
-import org.bukkit.entity.Vehicle;
+import org.bukkit.entity.*;
 import org.bukkit.entity.minecart.PoweredMinecart;
 import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.event.EventHandler;
@@ -62,28 +43,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerBucketEmptyEvent;
-import org.bukkit.event.player.PlayerBucketFillEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerEggThrowEvent;
-import org.bukkit.event.player.PlayerEvent;
-import org.bukkit.event.player.PlayerFishEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerKickEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
-import org.bukkit.event.player.PlayerPickupItemEvent;
-import org.bukkit.event.player.PlayerPortalEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.player.PlayerTakeLecternBookEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.event.raid.RaidTriggerEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -96,17 +57,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -1068,6 +1022,7 @@ class PlayerEventHandler implements Listener
         if (event.getTo() == null || event.getTo().getWorld() == null) return;
 
         Player player = event.getPlayer();
+
         if (event.getCause() == TeleportCause.NETHER_PORTAL)
         {
             //FEATURE: when players get trapped in a nether portal, send them back through to the other side
@@ -1076,6 +1031,7 @@ class PlayerEventHandler implements Listener
             //don't track in worlds where claims are not enabled
             if (!instance.claimsEnabledForWorld(event.getTo().getWorld())) return;
         }
+
     }
 
     //when a player teleports
@@ -1084,12 +1040,12 @@ class PlayerEventHandler implements Listener
     {
         Player player = event.getPlayer();
         PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
+        Claim toClaim = this.dataStore.getClaimAt(event.getTo(), false, playerData.lastClaim);
 
         //FEATURE: prevent players from using ender pearls to gain access to secured claims
         TeleportCause cause = event.getCause();
         if (cause == TeleportCause.CHORUS_FRUIT || (cause == TeleportCause.ENDER_PEARL && instance.config_claims_enderPearlsRequireAccessTrust))
         {
-            Claim toClaim = this.dataStore.getClaimAt(event.getTo(), false, playerData.lastClaim);
             if (toClaim != null)
             {
                 playerData.lastClaim = toClaim;
@@ -1650,6 +1606,10 @@ class PlayerEventHandler implements Listener
         }
     }
 
+    // air block clicking debouncer
+    UUID debounceUUID = null;
+    long debounceNanos = System.nanoTime();
+
     //when a player interacts with the world
     @EventHandler(priority = EventPriority.LOWEST)
     void onPlayerInteract(PlayerInteractEvent event)
@@ -1692,6 +1652,16 @@ class PlayerEventHandler implements Listener
                 }
             }
             return;
+        }
+
+        if (instance.config_visualizationGlowingFallingBlock && (action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR)) {
+            if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
+            if (playerData.getVisibleBoundaries() instanceof FakeFallingBlockVisualization vis && event.getClickedBlock() != null) {
+                FakeFallingBlockElement fe = vis.elementByLocation(event.getClickedBlock().getLocation());
+                if (fe != null) {
+                    fe.erase(player, player.getWorld());
+                }
+            }
         }
 
         //don't care about left-clicking on most blocks, this is probably a break action
@@ -2028,6 +1998,8 @@ class PlayerEventHandler implements Listener
                 //if claims are disabled in this world, do nothing
                 if (!instance.claimsEnabledForWorld(player.getWorld())) return;
 
+                playerData = this.dataStore.getPlayerData(player.getUniqueId());
+
                 //if holding shift (sneaking), show all claims in area
                 if (player.isSneaking() && player.hasPermission("griefprevention.visualizenearbyclaims"))
                 {
@@ -2047,24 +2019,24 @@ class PlayerEventHandler implements Listener
                 }
 
                 //FEATURE: shovel and stick can be used from a distance away
-                if (action == Action.RIGHT_CLICK_AIR)
-                {
+                boolean miss = true;
+                if (action == Action.RIGHT_CLICK_AIR) {
                     //try to find a far away non-air block along line of sight
-                    clickedBlock = getTargetBlock(player, 100);
+                    Block check = raytraceForClaimOrTarget(player, 100, (block, claim) -> claim.is3D() && claim.isCorner(block));
+                    if (check == null) {
+                        clickedBlock = player.getLocation().getBlock().getRelative(BlockFace.UP);
+                    } else {
+                        miss = false;
+                        clickedBlock = check;
+                    }
                     clickedBlockType = clickedBlock.getType();
+                    if (miss) miss = clickedBlockType == Material.AIR;
                 }
 
                 //if no block, stop here
-                if (clickedBlock == null)
-                {
-                    return;
-                }
+                if (clickedBlock == null) return;
 
-                playerData = this.dataStore.getPlayerData(player.getUniqueId());
-
-                //air indicates too far away
-                if (clickedBlockType == Material.AIR)
-                {
+                if (action != Action.RIGHT_CLICK_BLOCK && miss) {
                     GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooFarAway);
 
                     // Remove visualizations
@@ -2072,7 +2044,7 @@ class PlayerEventHandler implements Listener
                     return;
                 }
 
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false /*ignore height*/, playerData.lastClaim);
+                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, playerData.lastClaim);
 
                 //no claim case
                 if (claim == null)
@@ -2094,6 +2066,15 @@ class PlayerEventHandler implements Listener
                     ClaimInspectionEvent inspectionEvent = new ClaimInspectionEvent(player, clickedBlock, claim);
                     Bukkit.getPluginManager().callEvent(inspectionEvent);
                     if (inspectionEvent.isCancelled()) return;
+
+                    BoundaryVisualization currentVisualization = playerData.getVisibleBoundaries();
+                    Claim finalClaim = claim;
+                    if (currentVisualization != null && currentVisualization.getBoundaries().stream()
+                            .map(Boundary::claim)
+                            .allMatch(c -> c != null && (c == finalClaim || c.parent == finalClaim || c == finalClaim.parent || (c.parent != null && c.parent == finalClaim.parent)))) {
+                        playerData.setVisibleBoundaries(null);
+                        return;
+                    }
 
                     playerData.lastClaim = claim;
                     GriefPrevention.sendMessage(player, TextMode.Info, Messages.BlockClaimed, claim.getOwnerName());
@@ -2142,23 +2123,35 @@ class PlayerEventHandler implements Listener
                 return;
             }
 
+            // debouncer because event is called twice when clicking a non-existent block.
+            long cnanos = System.nanoTime();
+            if (player.getUniqueId().equals(debounceUUID) && cnanos < debounceNanos) {
+                return;
+            } else {
+                debounceUUID = player.getUniqueId();
+                debounceNanos = cnanos + 30_000_000; //30ms
+            }
+
             //FEATURE: shovel and stick can be used from a distance away
-            if (action == Action.RIGHT_CLICK_AIR)
-            {
+            boolean miss = true;
+            if (action == Action.RIGHT_CLICK_AIR) {
                 //try to find a far away non-air block along line of sight
-                clickedBlock = getTargetBlock(player, 100);
+                Block check = raytraceForClaimOrTarget(player, 100, (block, claim) -> claim.is3D() && claim.isCorner(block));
+                if (check == null) {
+                    clickedBlock = player.getLocation().getBlock().getRelative(BlockFace.UP);
+                } else {
+                    miss = false;
+                    clickedBlock = check;
+                }
                 clickedBlockType = clickedBlock.getType();
+                if (miss) miss = clickedBlockType == Material.AIR;
             }
 
             //if no block, stop here
-            if (clickedBlock == null)
-            {
-                return;
-            }
+            if (clickedBlock == null) return;
 
             //can't use the shovel from too far away
-            if (clickedBlockType == Material.AIR)
-            {
+            if (action != Action.RIGHT_CLICK_BLOCK && miss) {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooFarAway);
                 return;
             }
@@ -2169,7 +2162,7 @@ class PlayerEventHandler implements Listener
             if (playerData.shovelMode == ShovelMode.RestoreNature || playerData.shovelMode == ShovelMode.RestoreNatureAggressive)
             {
                 //if the clicked block is in a claim, visualize that claim and deliver an error message
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
+                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, playerData.lastClaim);
                 if (claim != null)
                 {
                     GriefPrevention.sendMessage(player, TextMode.Err, Messages.BlockClaimed, claim.getOwnerName());
@@ -2337,6 +2330,8 @@ class PlayerEventHandler implements Listener
             {
                 if (clickedBlock.getLocation().equals(playerData.lastShovelLocation)) return;
 
+                boolean is3DSubclaim = playerData.claimResizing.parent != null && playerData.claimResizing.is3D();
+
                 //figure out what the coords of his new claim would be
                 int newx1, newx2, newz1, newz2, newy1, newy2;
                 if (playerData.lastShovelLocation.getBlockX() == playerData.claimResizing.getLesserBoundaryCorner().getBlockX())
@@ -2361,8 +2356,13 @@ class PlayerEventHandler implements Listener
                     newz2 = clickedBlock.getZ();
                 }
 
-                newy1 = playerData.claimResizing.getLesserBoundaryCorner().getBlockY();
-                newy2 = clickedBlock.getY() - instance.config_claims_claimsExtendIntoGroundDistance;
+                if (playerData.lastShovelLocation.getBlockY() == playerData.claimResizing.getLesserBoundaryCorner().getBlockY()) {
+                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
+                    newy2 = playerData.claimResizing.getGreaterBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                } else {
+                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
+                    newy2 = playerData.claimResizing.getLesserBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                }
 
                 this.dataStore.resizeClaimWithChecks(player, playerData, newx1, newx2, newy1, newy2, newz1, newz2);
 
@@ -2370,7 +2370,7 @@ class PlayerEventHandler implements Listener
             }
 
             //otherwise, since not currently resizing a claim, must be starting a resize, creating a new claim, or creating a subdivision
-            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, playerData.lastClaim);
+            Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, false, playerData.lastClaim);
 
             //if within an existing claim, he's not creating a new one
             if (claim != null)
@@ -2380,15 +2380,16 @@ class PlayerEventHandler implements Listener
                 if (noEditReason == null)
                 {
                     //if he clicked on a corner, start resizing it
-                    if ((clickedBlock.getX() == claim.getLesserBoundaryCorner().getBlockX() || clickedBlock.getX() == claim.getGreaterBoundaryCorner().getBlockX()) && (clickedBlock.getZ() == claim.getLesserBoundaryCorner().getBlockZ() || clickedBlock.getZ() == claim.getGreaterBoundaryCorner().getBlockZ()))
+                    Claim resizeClaim = claim;
+                    if (claim.isCorner(clickedBlock) || (claim.parent != null && (resizeClaim = claim.parent).isCorner(clickedBlock)))
                     {
-                        playerData.claimResizing = claim;
+                        playerData.claimResizing = resizeClaim;
                         playerData.lastShovelLocation = clickedBlock.getLocation();
                         GriefPrevention.sendMessage(player, TextMode.Instr, Messages.ResizeStart);
                     }
 
                     //if he didn't click on a corner and is in subdivision mode, he's creating a new subdivision
-                    else if (playerData.shovelMode == ShovelMode.Subdivide)
+                    else if (playerData.shovelMode == ShovelMode.Subdivide || playerData.shovelMode == ShovelMode.Subdivide3d)
                     {
                         //if it's the first click, he's trying to start a new subdivision
                         if (playerData.lastShovelLocation == null)
@@ -2419,11 +2420,13 @@ class PlayerEventHandler implements Listener
                                 return;
                             }
 
+                            boolean is3d = playerData.shovelMode == ShovelMode.Subdivide3d;
+
                             //try to create a new claim (will return null if this subdivision overlaps another)
                             CreateClaimResult result = this.dataStore.createClaim(
                                     player.getWorld(),
                                     playerData.lastShovelLocation.getBlockX(), clickedBlock.getX(),
-                                    playerData.lastShovelLocation.getBlockY() - instance.config_claims_claimsExtendIntoGroundDistance, clickedBlock.getY() - instance.config_claims_claimsExtendIntoGroundDistance,
+                                    is3d ? playerData.lastShovelLocation.getBlockY() : claim.lesserBoundaryCorner.getBlockY(), is3d ? clickedBlock.getY() : Claim._2D_HEIGHT,
                                     playerData.lastShovelLocation.getBlockZ(), clickedBlock.getZ(),
                                     null,  //owner is not used for subdivisions
                                     playerData.claimSubdividing,
@@ -2572,7 +2575,7 @@ class PlayerEventHandler implements Listener
                 CreateClaimResult result = this.dataStore.createClaim(
                         player.getWorld(),
                         lastShovelLocation.getBlockX(), clickedBlock.getX(),
-                        lastShovelLocation.getBlockY() - instance.config_claims_claimsExtendIntoGroundDistance, clickedBlock.getY() - instance.config_claims_claimsExtendIntoGroundDistance,
+                        Math.min(lastShovelLocation.getBlockY(), clickedBlock.getY()) - instance.config_claims_claimsExtendIntoGroundDistance, Claim._2D_HEIGHT,
                         lastShovelLocation.getBlockZ(), clickedBlock.getZ(),
                         playerID,
                         null, null,
@@ -2676,23 +2679,52 @@ class PlayerEventHandler implements Listener
         }
     }
 
-    static Block getTargetBlock(Player player, int maxDistance) throws IllegalStateException
-    {
-        Location eye = player.getEyeLocation();
-        Material eyeMaterial = eye.getBlock().getType();
-        boolean passThroughWater = (eyeMaterial == Material.WATER);
+    public static Block raytraceForTarget(Player player, int maxDistance, Predicate<Block> predicate) throws IllegalStateException {
         BlockIterator iterator = new BlockIterator(player.getLocation(), player.getEyeHeight(), maxDistance);
-        Block result = player.getLocation().getBlock().getRelative(BlockFace.UP);
-        while (iterator.hasNext())
-        {
+        Block result;
+        while (iterator.hasNext()) {
             result = iterator.next();
-            Material type = result.getType();
-            if (type != Material.AIR &&
-                    (!passThroughWater || type != Material.WATER) &&
-                    type != Material.GRASS &&
-                    type != Material.SNOW) return result;
+            if (predicate.test(result)) {
+                return result;
+            }
         }
-
-        return result;
+        return null;
     }
+
+    public static Block raytraceForClaimOrTarget(Player player, int maxDistance, BiPredicate<Block, Claim> predicate) throws IllegalStateException {
+        return raytraceForTarget(player, maxDistance, new Predicate<Block>() {
+            Location loc = player.getLocation();
+            Material eyeMaterial = player.getEyeLocation().getBlock().getType();
+            boolean passThroughWater = (eyeMaterial == Material.WATER);
+            List<Claim> claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(loc.getBlockX() >> 4, loc.getBlockZ() >> 4));
+
+            @Override
+            public boolean test(Block result) {
+                if (result.isPassable()) {
+                    if (result.getX() % 16 == 0 || result.getZ() % 16 == 0) {
+                        claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(result.getX() >> 4, result.getZ() >> 4));
+                    }
+
+                    if (claimsInChunk != null) {
+                        for (Claim parent : claimsInChunk) {
+                            if (predicate.test(result, parent)) {
+                                return true;
+                            } else if (!parent.children.isEmpty()) {
+                                for (Claim child : parent.children) {
+                                    if (predicate.test(result, child)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return !passThroughWater && result.getType() == Material.WATER;
+                } else {
+                    return true;
+                }
+            }
+        });
+    }
+
 }

@@ -25,22 +25,9 @@ import org.bukkit.World;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 
@@ -469,6 +456,20 @@ public class FlatFileDataStore extends DataStore
                 this.addClaim(child, false);
             }
         }
+
+        // 3dsubclaims conversion
+        for (Claim parent : this.claims) {
+            if (parent.parent == null && parent.greaterBoundaryCorner.getBlockY() != Claim._2D_HEIGHT) {
+                parent.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
+                for (Claim child : parent.children) {
+                    child.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
+                    child.lesserBoundaryCorner.setY(parent.lesserBoundaryCorner.getBlockY());
+                    saveClaim(child);
+                }
+                saveClaim(parent);
+            }
+        }
+
     }
 
     Claim loadClaim(File file, ArrayList<Long> out_parentID, long claimID) throws IOException, InvalidConfigurationException, Exception

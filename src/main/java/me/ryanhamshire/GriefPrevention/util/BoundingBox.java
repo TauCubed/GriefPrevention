@@ -156,7 +156,6 @@ public class BoundingBox implements Cloneable
     public BoundingBox(@NotNull Claim claim)
     {
         this(claim.getLesserBoundaryCorner(), claim.getGreaterBoundaryCorner(), false);
-        this.maxY = Objects.requireNonNull(claim.getLesserBoundaryCorner().getWorld()).getMaxHeight();
     }
 
     /**
@@ -429,6 +428,23 @@ public class BoundingBox implements Cloneable
         this.maxX = other.maxX;
         this.maxY = other.maxY;
         this.maxZ = other.maxZ;
+    }
+
+    /**
+     * Sets the dimensions and location of this bounding box to that of a cliam
+     *
+     * @param claim the claim to copy from
+     */
+    public BoundingBox copy(Claim claim) {
+        Location min = claim.getLesserBoundaryCorner(), max = claim.getGreaterBoundaryCorner();
+        this.minX = min.getBlockX();
+        this.minY = min.getBlockY();
+        this.minZ = min.getBlockZ();
+
+        this.maxX = max.getBlockX();
+        this.maxY = max.getBlockY();
+        this.maxZ = max.getBlockZ();
+        return this;
     }
 
     /**
@@ -807,6 +823,12 @@ public class BoundingBox implements Cloneable
         // For help visualizing test cases, try https://silentmatt.com/rectangle-intersection/
         return this.minX <= other.maxX && this.maxX >= other.minX
                 && this.minY <= other.maxY && this.maxY >= other.minY
+                && this.minZ <= other.maxZ && this.maxZ >= other.minZ;
+    }
+
+    public boolean intersects2d(@NotNull BoundingBox other)
+    {
+        return this.minX <= other.maxX && this.maxX >= other.minX
                 && this.minZ <= other.maxZ && this.maxZ >= other.minZ;
     }
 

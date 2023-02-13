@@ -15,23 +15,21 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * A representation of a system for displaying rectangular {@link Boundary Boundaries} to {@link Player Players}.
- *
+ * <p>
  * This is used to display claim areas, visualize affected area during nature restoration, and more.
  */
 public abstract class BoundaryVisualization
 {
 
-    private final Collection<Boundary> elements = new HashSet<>();
+    protected final Collection<Boundary> boundaries = new HashSet<>();
+    protected final Collection<Boundary> elements = boundaries;
     protected final @NotNull World world;
     protected final @NotNull IntVector visualizeFrom;
     protected final int height;
@@ -58,7 +56,7 @@ public abstract class BoundaryVisualization
      */
     @Contract("null -> false")
     protected boolean canVisualize(@Nullable Player player) {
-        return player != null && player.isOnline() && !elements.isEmpty() && Objects.equals(world, player.getWorld());
+        return player != null && player.isOnline() && !boundaries.isEmpty() && Objects.equals(world, player.getWorld());
     }
 
     /**
@@ -67,13 +65,13 @@ public abstract class BoundaryVisualization
      * @param player the visualization target
      * @param playerData the {@link PlayerData} of the visualization target
      */
-    private void apply(@NotNull Player player, @NotNull PlayerData playerData)
+    protected void apply(@NotNull Player player, @NotNull PlayerData playerData)
     {
         // Remember the visualization so it can be reverted.
         playerData.setVisibleBoundaries(this);
 
         // Apply all visualization elements.
-        elements.forEach(element -> draw(player, element));
+        boundaries.forEach(element -> draw(player, element));
 
         // Schedule automatic reversion.
         scheduleRevert(player, playerData);
@@ -102,9 +100,15 @@ public abstract class BoundaryVisualization
                 GriefPrevention.instance,
                 () -> {
                     // Only revert if this is the active visualization.
-                    if (playerData.getVisibleBoundaries() == this) revert(player);
+                    if (playerData.getVisibleBoundaries() == this) {
+                        playerData.setVisibleBoundaries(null);
+                    }
                 },
                 20L * 60);
+    }
+
+    public Collection<Boundary> getBoundaries() {
+        return Collections.unmodifiableCollection(this.boundaries);
     }
 
     /**
@@ -120,8 +124,10 @@ public abstract class BoundaryVisualization
             return;
         }
 
+        PlayerData data = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
+
         // Revert data as necessary for any sent elements.
-        elements.forEach(element -> erase(player, element));
+        boundaries.forEach(element -> erase(player, element));
     }
 
     /**
@@ -178,7 +184,7 @@ public abstract class BoundaryVisualization
             @NotNull VisualizationType type,
             @NotNull Block block)
     {
-        visualizeClaim(player, claim, type, block.getY());
+        visualizeClaim(player, claim, type, player.getEyeLocation().getBlockY());
     }
 
     /**
@@ -210,8 +216,15 @@ public abstract class BoundaryVisualization
     {
         if (claim == null) return Set.of();
 
-        // For single claims, always visualize parent and children.
-        if (claim.parent != null) claim = claim.parent;
+        boolean subdivision = claim.parent != null;
+        if (subdivision) {
+            if (type == VisualizationType.CONFLICT_ZONE) {
+                return List.of(new Boundary(claim.parent, claim.parent.isAdminClaim() ? VisualizationType.ADMIN_CLAIM : VisualizationType.CLAIM), new Boundary(claim, type));
+            } else {
+                // For single claims, always visualize parent and children.
+                claim = claim.parent;
+            }
+        }
 
         // Correct visualization type for claim type for simplicity.
         if (type == VisualizationType.CLAIM && claim.isAdminClaim()) type = VisualizationType.ADMIN_CLAIM;
@@ -256,7 +269,7 @@ public abstract class BoundaryVisualization
 
         Player player = event.getPlayer();
         BoundaryVisualization visualization = event.getProvider().create(player.getWorld(), event.getCenter(), event.getHeight());
-        event.getBoundaries().stream().filter(Objects::nonNull).forEach(visualization.elements::add);
+        event.getBoundaries().stream().filter(Objects::nonNull).forEach(visualization.boundaries::add);
 
         PlayerData playerData = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
 
@@ -312,7 +325,7 @@ public abstract class BoundaryVisualization
                 // Fall through to default provider.
                 BoundaryVisualization fallback = BoundaryVisualizationEvent.DEFAULT_PROVIDER
                         .create(event.getPlayer().getWorld(), event.getCenter(), event.getHeight());
-                event.getBoundaries().stream().filter(Objects::nonNull).forEach(fallback.elements::add);
+                event.getBoundaries().stream().filter(Objects::nonNull).forEach(fallback.boundaries::add);
                 fallback.apply(event.getPlayer(), playerData);
             }
         }
