@@ -47,8 +47,14 @@ public class Claim
 
     //two locations, which together define the boundaries of the claim
     //note that the upper Y value is always ignored, because claims ALWAYS extend up to the sky
-    Location lesserBoundaryCorner;
-    Location greaterBoundaryCorner;
+    //Location lesserBoundaryCorner;
+    //Location greaterBoundaryCorner;
+
+    // the world the claim resides in
+    World world;
+
+    // the bounds of the claim
+    BoundingBox bounds;
 
     //modification date.  this comes from the file timestamp during load, and is updated with runtime changes
     public Date modifiedDate;
@@ -132,7 +138,7 @@ public class Claim
         if (this.getArea() > 10000) return;
 
         //only in creative mode worlds
-        if (!GriefPrevention.instance.creativeRulesApply(this.lesserBoundaryCorner)) return;
+        if (!GriefPrevention.instance.creativeRulesApply(world)) return;
 
         Location lesser = this.getLesserBoundaryCorner();
         Location greater = this.getGreaterBoundaryCorner();
@@ -200,8 +206,12 @@ public class Claim
         return false;
     }
 
+    Claim(Location lesserBoundaryCorner, Location greaterBoundaryCorner, UUID ownerID, List<String> builderIDs, List<String> containerIDs, List<String> accessorIDs, List<String> managerIDs, boolean inheritNothing, Long id) {
+        this(lesserBoundaryCorner.getWorld(), new BoundingBox(lesserBoundaryCorner, greaterBoundaryCorner), ownerID, builderIDs, containerIDs, accessorIDs, managerIDs, inheritNothing, id);
+    }
+
     //main constructor.  note that only creating a claim instance does nothing - a claim must be added to the data store to be effective
-    Claim(Location lesserBoundaryCorner, Location greaterBoundaryCorner, UUID ownerID, List<String> builderIDs, List<String> containerIDs, List<String> accessorIDs, List<String> managerIDs, boolean inheritNothing, Long id)
+    Claim(World world, BoundingBox bounds, UUID ownerID, List<String> builderIDs, List<String> containerIDs, List<String> accessorIDs, List<String> managerIDs, boolean inheritNothing, Long id)
     {
         //modification date
         this.modifiedDate = Calendar.getInstance().getTime();
@@ -209,9 +219,11 @@ public class Claim
         //id
         this.id = id;
 
-        //store corners
-        this.lesserBoundaryCorner = lesserBoundaryCorner;
-        this.greaterBoundaryCorner = greaterBoundaryCorner;
+        //store world
+        this.world = world;
+
+        //store bounds
+        this.bounds = bounds;
 
         //owner
         this.ownerID = ownerID;
@@ -251,8 +263,8 @@ public class Claim
     //produces a copy of a claim.
     public Claim(Claim claim) {
         this.modifiedDate = claim.modifiedDate;
-        this.lesserBoundaryCorner = claim.greaterBoundaryCorner.clone();
-        this.greaterBoundaryCorner = claim.greaterBoundaryCorner.clone();
+        this.world = claim.getWorld();
+        this.bounds = claim.bounds.clone();
         this.id = claim.id;
         this.ownerID = claim.ownerID;
         this.managers = new ArrayList<>(claim.managers);
@@ -269,20 +281,22 @@ public class Claim
     //measurements.  all measurements are in blocks
     public int getArea()
     {
-        int claimWidth = this.greaterBoundaryCorner.getBlockX() - this.lesserBoundaryCorner.getBlockX() + 1;
-        int claimHeight = this.greaterBoundaryCorner.getBlockZ() - this.lesserBoundaryCorner.getBlockZ() + 1;
+        int claimLength = this.bounds.getLength() + 1;
+        int claimWidth = this.bounds.getWidth() + 1;
 
-        return claimWidth * claimHeight;
+        return claimLength * claimWidth;
     }
 
-    public int getWidth()
-    {
-        return this.greaterBoundaryCorner.getBlockX() - this.lesserBoundaryCorner.getBlockX() + 1;
+    // backwards, use getBounds getLength
+    @Deprecated(forRemoval = true)
+    public int getWidth() {
+        return bounds.getLength() + 1;
     }
 
-    public int getHeight()
-    {
-        return this.greaterBoundaryCorner.getBlockZ() - this.lesserBoundaryCorner.getBlockZ() + 1;
+    // backwards and not anything to do with Y, use getBounds getLength
+    @Deprecated(forRemoval = true)
+    public int getHeight() {
+        return bounds.getWidth() + 1;
     }
 
     public boolean getSubclaimRestrictions()
@@ -295,15 +309,10 @@ public class Claim
         this.inheritNothing = inheritNothing;
     }
 
-    //distance check for claims, distance in this case is a band around the outside of the claim rather then euclidean distance
-    public boolean isNear(Location location, int howNear)
-    {
-        Claim claim = new Claim
-                (new Location(this.lesserBoundaryCorner.getWorld(), this.lesserBoundaryCorner.getBlockX() - howNear, this.lesserBoundaryCorner.getBlockY(), this.lesserBoundaryCorner.getBlockZ() - howNear),
-                        new Location(this.greaterBoundaryCorner.getWorld(), this.greaterBoundaryCorner.getBlockX() + howNear, this.greaterBoundaryCorner.getBlockY(), this.greaterBoundaryCorner.getBlockZ() + howNear),
-                        null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), null);
-
-        return claim.contains(location, false, true);
+    // returns true if the location is near this claim by howNear
+    public boolean isNear(Location location, int howNear) {
+        BoundingBox bounds = parent == null ? this.bounds : parent.bounds;
+        return bounds.clone().expand(howNear).contains(location);
     }
 
     /**
@@ -721,17 +730,24 @@ public class Claim
         managers.addAll(this.managers);
     }
 
-    //returns a copy of the location representing lower x, y, z limits
-    public Location getLesserBoundaryCorner()
-    {
-        return this.lesserBoundaryCorner.clone();
+    // the claims current bounds, DO NOT MODIFY
+    public BoundingBox getBounds() {
+        return bounds;
     }
 
-    //returns a copy of the location representing upper x, y, z limits
-    //NOTE: remember upper Y will always be ignored, all claims always extend to the sky
-    public Location getGreaterBoundaryCorner()
-    {
-        return this.greaterBoundaryCorner.clone();
+    //returns the world this claim resides in
+    public World getWorld() {
+        return world;
+    }
+
+    // creates a location representing the lesser corner of the getBounds
+    public Location getLesserBoundaryCorner() {
+        return new Location(world, bounds.getMinX(), bounds.getMinY(), bounds.getMinZ());
+    }
+
+    // creates a location representing the greater corner of the getBounds
+    public Location getGreaterBoundaryCorner() {
+        return new Location(world, bounds.getMaxX(), bounds.getMaxY(), bounds.getMaxZ());
     }
 
     //returns a friendly owner name (for admin claims, returns "an administrator" as the owner)
@@ -761,19 +777,18 @@ public class Claim
     public boolean contains(Location location, boolean ignoreHeight, boolean excludeSubdivisions)
     {
         //not in the same world implies false
-        if (!Objects.equals(location.getWorld(), this.lesserBoundaryCorner.getWorld())) return false;
+        if (!Objects.equals(location.getWorld(), world)) return false;
 
-        BoundingBox boundingBox = new BoundingBox(this);
         int x = location.getBlockX();
         int z = location.getBlockZ();
 
         // If we're ignoring height, use 2D containment check.
-        if (ignoreHeight && !boundingBox.contains2d(x, z))
+        if (ignoreHeight && !bounds.contains2d(x, z))
         {
             return false;
         }
         // Otherwise use full containment check.
-        else if (!ignoreHeight && !boundingBox.contains(x, location.getBlockY(), z))
+        else if (!ignoreHeight && !bounds.contains(x, location.getBlockY(), z))
         {
             return false;
         }
@@ -810,24 +825,24 @@ public class Claim
     }
 
     public boolean isCorner(int x, int y, int z) {
-        return (x == lesserBoundaryCorner.getBlockX() || x == greaterBoundaryCorner.getBlockX()) && (z == lesserBoundaryCorner.getBlockZ() || z == greaterBoundaryCorner.getBlockZ())
-                && (!is3D() || y == lesserBoundaryCorner.getBlockY() || y == greaterBoundaryCorner.getBlockY());
+        return (x == bounds.getMinX() || x == bounds.getMaxX()) && (z == bounds.getMinZ() || z == bounds.getMaxZ())
+                && (!is3D() || y == bounds.getMinY() || y == bounds.getMaxY());
     }
 
     public boolean is3D() {
-        return greaterBoundaryCorner.getBlockY() != _2D_HEIGHT;
+        return bounds.getMaxY() != _2D_HEIGHT;
     }
 
     //whether or not two claims overlap
     //used internally to prevent overlaps when creating claims
     boolean overlaps(Claim otherClaim)
     {
-        if (!Objects.equals(this.lesserBoundaryCorner.getWorld(), otherClaim.getLesserBoundaryCorner().getWorld())) return false;
+        if (!Objects.equals(world, otherClaim.getWorld())) return false;
 
         if (is3D() && otherClaim.is3D()) {
-            return new BoundingBox(this).intersects(new BoundingBox(otherClaim));
+            return bounds.intersects(otherClaim.bounds);
         } else {
-            return new BoundingBox(this).intersects2d(new BoundingBox(otherClaim));
+            return bounds.intersects2d(otherClaim.bounds);
         }
     }
 
@@ -836,11 +851,7 @@ public class Claim
     }
 
     public boolean isInside(int x, int y, int z) {
-        int maxX = greaterBoundaryCorner.getBlockX(), maxY = greaterBoundaryCorner.getBlockY(), maxZ = greaterBoundaryCorner.getBlockZ();
-        int minX = lesserBoundaryCorner.getBlockX(), minY = lesserBoundaryCorner.getBlockY(), minZ = lesserBoundaryCorner.getBlockZ();
-        return minX <= x && maxX >= x
-                && minY <= y && maxY >= y
-                && minZ <= z && maxZ >= z;
+        return bounds.contains(x, y, z);
     }
 
     //whether more entities may be added to a claim
@@ -849,7 +860,7 @@ public class Claim
         if (this.parent != null) return this.parent.allowMoreEntities(remove);
 
         //this rule only applies to creative mode worlds
-        if (!GriefPrevention.instance.creativeRulesApply(this.getLesserBoundaryCorner())) return null;
+        if (!GriefPrevention.instance.creativeRulesApply(world)) return null;
 
         //admin claims aren't restricted
         if (this.isAdminClaim()) return null;
@@ -938,21 +949,21 @@ public class Claim
     {
         //decide which blocks will be considered player placed
         Location lesserBoundaryCorner = this.getLesserBoundaryCorner();
-        Set<Material> playerBlocks = RestoreNatureProcessingTask.getPlayerBlocks(lesserBoundaryCorner.getWorld().getEnvironment(), lesserBoundaryCorner.getBlock().getBiome());
+        Set<Material> playerBlocks = RestoreNatureProcessingTask.getPlayerBlocks(world.getEnvironment(), lesserBoundaryCorner.getBlock().getBiome());
 
         //scan the claim for player placed blocks
         double score = 0;
 
-        boolean creativeMode = GriefPrevention.instance.creativeRulesApply(lesserBoundaryCorner);
+        boolean creativeMode = GriefPrevention.instance.creativeRulesApply(world);
 
-        for (int x = this.lesserBoundaryCorner.getBlockX(); x <= this.greaterBoundaryCorner.getBlockX(); x++)
+        for (int x = this.bounds.getMinX(); x <= this.bounds.getMaxX(); x++)
         {
-            for (int z = this.lesserBoundaryCorner.getBlockZ(); z <= this.greaterBoundaryCorner.getBlockZ(); z++)
+            for (int z = this.bounds.getMinZ(); z <= this.bounds.getMaxZ(); z++)
             {
-                int y = this.lesserBoundaryCorner.getBlockY();
-                for (; y < GriefPrevention.instance.getSeaLevel(this.lesserBoundaryCorner.getWorld()) - 5; y++)
+                int y = this.bounds.getMinY();
+                for (; y < GriefPrevention.instance.getSeaLevel(this.world) - 5; y++)
                 {
-                    Block block = this.lesserBoundaryCorner.getWorld().getBlockAt(x, y, z);
+                    Block block = this.world.getBlockAt(x, y, z);
                     if (playerBlocks.contains(block.getType()))
                     {
                         if (block.getType() == Material.CHEST && !creativeMode)
@@ -966,9 +977,9 @@ public class Claim
                     }
                 }
 
-                for (; y < this.lesserBoundaryCorner.getWorld().getMaxHeight(); y++)
+                for (; y < this.world.getMaxHeight(); y++)
                 {
-                    Block block = this.lesserBoundaryCorner.getWorld().getBlockAt(x, y, z);
+                    Block block = this.world.getBlockAt(x, y, z);
                     if (playerBlocks.contains(block.getType()))
                     {
                         if (block.getType() == Material.CHEST && !creativeMode)
@@ -1018,9 +1029,9 @@ public class Claim
     @Override
     public String toString() {
         return "Claim{" +
-                "lesserBoundaryCorner=%d,%d,%d".formatted(lesserBoundaryCorner.getBlockX(), lesserBoundaryCorner.getBlockY(), lesserBoundaryCorner.getBlockZ()) +
-                ", greaterBoundaryCorner=%d,%d,%d".formatted(greaterBoundaryCorner.getBlockX(), greaterBoundaryCorner.getBlockY(), greaterBoundaryCorner.getBlockZ()) +
-                ", world=" + lesserBoundaryCorner.getWorld().getName() +
+                "lesserBoundaryCorner=%d,%d,%d".formatted(bounds.getMinX(), bounds.getMinY(), bounds.getMinZ()) +
+                ", greaterBoundaryCorner=%d,%d,%d".formatted(bounds.getMaxX(), bounds.getMaxY(), bounds.getMaxZ()) +
+                ", world=" + world.getName() +
                 ", id=" + id +
                 ", ownerID=" + ownerID +
                 ", inheritNothing=" + inheritNothing +

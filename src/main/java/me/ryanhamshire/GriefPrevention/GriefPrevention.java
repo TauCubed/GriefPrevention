@@ -26,6 +26,7 @@ import me.ryanhamshire.GriefPrevention.events.SaveTrappedPlayerEvent;
 import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.metrics.MetricsHandler;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.BanList.Type;
@@ -1103,7 +1104,7 @@ public class GriefPrevention extends JavaPlugin
                 GriefPrevention.sendMessage(player, TextMode.Success, Messages.CreateClaimSuccess);
 
                 //link to a video demo of land claiming, based on world type
-                if (GriefPrevention.instance.creativeRulesApply(player.getLocation()))
+                if (GriefPrevention.instance.creativeRulesApply(player.getWorld()))
                 {
                     GriefPrevention.sendMessage(player, TextMode.Instr, Messages.CreativeBasicsVideo2, DataStore.CREATIVE_VIDEO_URL);
                 }
@@ -1127,7 +1128,7 @@ public class GriefPrevention extends JavaPlugin
             if (args.length < 1)
             {
                 //link to a video demo of land claiming, based on world type
-                if (GriefPrevention.instance.creativeRulesApply(player.getLocation()))
+                if (GriefPrevention.instance.creativeRulesApply(player.getWorld()))
                 {
                     GriefPrevention.sendMessage(player, TextMode.Instr, Messages.CreativeBasicsVideo2, DataStore.CREATIVE_VIDEO_URL);
                 }
@@ -1146,7 +1147,7 @@ public class GriefPrevention extends JavaPlugin
             catch (NumberFormatException e)
             {
                 //link to a video demo of land claiming, based on world type
-                if (GriefPrevention.instance.creativeRulesApply(player.getLocation()))
+                if (GriefPrevention.instance.creativeRulesApply(player.getWorld()))
                 {
                     GriefPrevention.sendMessage(player, TextMode.Instr, Messages.CreativeBasicsVideo2, DataStore.CREATIVE_VIDEO_URL);
                 }
@@ -1181,33 +1182,30 @@ public class GriefPrevention extends JavaPlugin
                 return true;
             }
 
-            boolean isSubclaim = claim.parent != null;
-
             //determine new corner coordinates
             org.bukkit.util.Vector direction = player.getLocation().getDirection();
-            if (!isSubclaim && direction.getY() > .75)
+            if (!claim.is3D() && direction.getY() > .75)
             {
                 GriefPrevention.sendMessage(player, TextMode.Info, Messages.ClaimsExtendToSky);
                 return true;
             }
 
-            if (!isSubclaim && direction.getY() < -.75)
+            if (!claim.is3D() && direction.getY() < -.75)
             {
                 GriefPrevention.sendMessage(player, TextMode.Info, Messages.ClaimsAutoExtendDownward);
                 return true;
             }
 
-            Location lc = claim.getLesserBoundaryCorner();
-            Location gc = claim.getGreaterBoundaryCorner();
-            int newx1 = lc.getBlockX();
-            int newx2 = gc.getBlockX();
-            int newy1 = lc.getBlockY();
-            int newy2 = gc.getBlockY();
-            int newz1 = lc.getBlockZ();
-            int newz2 = gc.getBlockZ();
+            BoundingBox box = claim.getBounds();
+            int newx1 = box.getMinX();
+            int newx2 = box.getMaxX();
+            int newy1 = box.getMinY();
+            int newy2 = box.getMaxY();
+            int newz1 = box.getMinZ();
+            int newz2 = box.getMaxZ();
 
-            // if subclaim & changing Y only
-            if (isSubclaim && Math.abs(direction.getY()) > .6) {
+            // if 3dclaim & changing Y only
+            if (claim.is3D() && Math.abs(direction.getY()) > .6) {
                 if (direction.getY() > 0) {
                     newy2 += amount;
                 } else {
@@ -1450,7 +1448,7 @@ public class GriefPrevention extends JavaPlugin
 
             //confirm
             GriefPrevention.sendMessage(player, TextMode.Success, Messages.TransferSuccess);
-            GriefPrevention.AddLogEntry(player.getName() + " transferred a claim at " + GriefPrevention.getfriendlyLocationString(claim.getLesserBoundaryCorner()) + " to " + ownerName + ".", CustomLogEntryTypes.AdminActivity);
+            GriefPrevention.AddLogEntry(player.getName() + " transferred a claim at " + GriefPrevention.getfriendlyLocationString(claim) + " to " + ownerName + ".", CustomLogEntryTypes.AdminActivity);
 
             return true;
         }
@@ -1974,6 +1972,17 @@ public class GriefPrevention extends JavaPlugin
             return true;
         }
 
+        //3dclaims
+        else if (cmd.getName().equalsIgnoreCase("3dclaims") && player != null)
+        {
+            PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
+            playerData.shovelMode = ShovelMode._3d;
+            playerData.claimSubdividing = null;
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages._3DClaimsMode);
+
+            return true;
+        }
+
         //subdivideclaims
         else if (cmd.getName().equalsIgnoreCase("subdivideclaims") && player != null)
         {
@@ -2025,13 +2034,13 @@ public class GriefPrevention extends JavaPlugin
                         this.dataStore.deleteClaim(claim, true, true);
 
                         //if in a creative mode world, /restorenature the claim
-                        if (GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
+                        if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
                         {
                             GriefPrevention.instance.restoreClaim(claim, 0);
                         }
 
                         GriefPrevention.sendMessage(player, TextMode.Success, Messages.DeleteSuccess);
-                        GriefPrevention.AddLogEntry(player.getName() + " deleted " + claim.getOwnerName() + "'s claim at " + GriefPrevention.getfriendlyLocationString(claim.getLesserBoundaryCorner()), CustomLogEntryTypes.AdminActivity);
+                        GriefPrevention.AddLogEntry(player.getName() + " deleted " + claim.getOwnerName() + "'s claim at " + GriefPrevention.getfriendlyLocationString(claim), CustomLogEntryTypes.AdminActivity);
 
                         //revert any current visualization
                         playerData.setVisibleBoundaries(null);
@@ -2232,7 +2241,7 @@ public class GriefPrevention extends JavaPlugin
                 for (int i = 0; i < playerData.getClaims().size(); i++)
                 {
                     Claim claim = playerData.getClaims().get(i);
-                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim.getLesserBoundaryCorner()) + this.dataStore.getMessage(Messages.ContinueBlockMath, String.valueOf(claim.getArea())));
+                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim) + this.dataStore.getMessage(Messages.ContinueBlockMath, String.valueOf(claim.getArea())));
                 }
 
                 GriefPrevention.sendMessage(player, TextMode.Instr, Messages.EndBlockMath, String.valueOf(playerData.getRemainingClaimBlocks()));
@@ -2262,7 +2271,7 @@ public class GriefPrevention extends JavaPlugin
                 GriefPrevention.sendMessage(player, TextMode.Instr, Messages.ClaimsListHeader);
                 for (Claim claim : claims)
                 {
-                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim.getLesserBoundaryCorner()));
+                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim));
                 }
             }
 
@@ -2768,7 +2777,7 @@ public class GriefPrevention extends JavaPlugin
 
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
             Boolean ignoreStatus = playerData.ignoredPlayers.get(targetPlayer.getUniqueId());
-            if (ignoreStatus == null || ignoreStatus == true)
+            if (ignoreStatus == null || ignoreStatus)
             {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.NotIgnoringPlayer);
                 return true;
@@ -2880,7 +2889,7 @@ public class GriefPrevention extends JavaPlugin
         }
         else
         {
-            playerData.ignoredPlayers.put(ignoree.getUniqueId(), mode == IgnoreMode.StandardIgnore ? false : true);
+            playerData.ignoredPlayers.put(ignoree.getUniqueId(), mode != IgnoreMode.StandardIgnore);
         }
 
         playerData.ignoreListChanged = true;
@@ -2906,9 +2915,24 @@ public class GriefPrevention extends JavaPlugin
         }
     }
 
-    public static String getfriendlyLocationString(Location location)
-    {
-        return location.getWorld().getName() + ": x" + location.getBlockX() + ", z" + location.getBlockZ();
+    public static String getfriendlyLocationString(Location location) {
+        return getFriendlyLocationString(location.getWorld(), location.getBlockX(), location.getBlockZ());
+    }
+
+    public static String getfriendlyLocationString(Claim claim) {
+        if (claim.is3D()) {
+            return getFriendlyLocationString(claim.getWorld(), claim.getBounds().getMinX(), claim.getBounds().getMinY(), claim.getBounds().getMinZ());
+        } else {
+            return getFriendlyLocationString(claim.getWorld(), claim.getBounds().getMinX(), claim.getBounds().getMinZ());
+        }
+    }
+
+    public static String getFriendlyLocationString(World world, int x, int z) {
+        return world.getName() + ": x" + x + ", z" + z;
+    }
+
+    public static String getFriendlyLocationString(World world, int x, int y, int z) {
+        return world.getName() + ": x" + x + ", y" + y + ", z" + z;
     }
 
     private boolean abandonClaimHandler(Player player, boolean deleteTopLevelClaim)
@@ -2941,9 +2965,9 @@ public class GriefPrevention extends JavaPlugin
             this.dataStore.deleteClaim(claim, true, false);
 
             //if in a creative mode world, restore the claim area
-            if (GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()))
+            if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()))
             {
-                GriefPrevention.AddLogEntry(player.getName() + " abandoned a claim @ " + GriefPrevention.getfriendlyLocationString(claim.getLesserBoundaryCorner()));
+                GriefPrevention.AddLogEntry(player.getName() + " abandoned a claim @ " + GriefPrevention.getfriendlyLocationString(claim));
                 GriefPrevention.sendMessage(player, TextMode.Warn, Messages.UnclaimCleanupWarning);
                 GriefPrevention.instance.restoreClaim(claim, 20L * 60 * 2);
             }
@@ -3351,7 +3375,7 @@ public class GriefPrevention extends JavaPlugin
             //if there's a claim here, keep looking
             if (claim != null)
             {
-                candidateLocation = new Location(claim.lesserBoundaryCorner.getWorld(), claim.lesserBoundaryCorner.getBlockX() - 1, claim.lesserBoundaryCorner.getBlockY(), claim.lesserBoundaryCorner.getBlockZ() - 1);
+                candidateLocation = claim.getLesserBoundaryCorner().subtract(1, 1, 1);
                 continue;
             }
 
@@ -3436,11 +3460,11 @@ public class GriefPrevention extends JavaPlugin
     }
 
     //determines whether creative anti-grief rules apply at a location
-    boolean creativeRulesApply(Location location)
+    boolean creativeRulesApply(World world)
     {
         if (!this.config_creativeWorldsExist) return false;
 
-        return this.config_claims_worldModes.get((location.getWorld())) == ClaimsMode.Creative;
+        return this.config_claims_worldModes.get(world) == ClaimsMode.Creative;
     }
 
     public String allowBuild(Player player, Location location)
@@ -3463,7 +3487,7 @@ public class GriefPrevention extends JavaPlugin
         if (claim == null)
         {
             //no building in the wilderness in creative mode
-            if (this.creativeRulesApply(location) || this.config_claims_worldModes.get(location.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
+            if (this.creativeRulesApply(location.getWorld()) || this.config_claims_worldModes.get(location.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
             {
                 //exception: when chest claims are enabled, players who have zero land claims and are placing a chest
                 if (material != Material.CHEST || playerData.getClaims().size() > 0 || GriefPrevention.instance.config_claims_automaticClaimsForNewPlayersRadius == -1)
@@ -3526,7 +3550,7 @@ public class GriefPrevention extends JavaPlugin
         if (claim == null)
         {
             //no building in the wilderness in creative mode
-            if (this.creativeRulesApply(location) || this.config_claims_worldModes.get(location.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
+            if (this.creativeRulesApply(location.getWorld()) || this.config_claims_worldModes.get(location.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
             {
                 String reason = this.dataStore.getMessage(Messages.NoBuildOutsideClaims);
                 if (player.hasPermission("griefprevention.ignoreclaims"))
@@ -3608,7 +3632,7 @@ public class GriefPrevention extends JavaPlugin
 
         //create task
         //when done processing, this task will create a main thread task to actually update the world with processing results
-        RestoreNatureProcessingTask task = new RestoreNatureProcessingTask(snapshots, miny, chunk.getWorld().getEnvironment(), lesserBoundaryCorner.getBlock().getBiome(), lesserBoundaryCorner, greaterBoundaryCorner, this.getSeaLevel(chunk.getWorld()), aggressiveMode, GriefPrevention.instance.creativeRulesApply(lesserBoundaryCorner), playerReceivingVisualization);
+        RestoreNatureProcessingTask task = new RestoreNatureProcessingTask(snapshots, miny, chunk.getWorld().getEnvironment(), lesserBoundaryCorner.getBlock().getBiome(), lesserBoundaryCorner, greaterBoundaryCorner, this.getSeaLevel(chunk.getWorld()), aggressiveMode, GriefPrevention.instance.creativeRulesApply(lesserBoundaryCorner.getWorld()), playerReceivingVisualization);
         GriefPrevention.instance.getServer().getScheduler().runTaskLaterAsynchronously(GriefPrevention.instance, task, delayInTicks);
     }
 

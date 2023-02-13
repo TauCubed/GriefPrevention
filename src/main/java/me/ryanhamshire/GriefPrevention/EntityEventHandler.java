@@ -279,7 +279,7 @@ public class EntityEventHandler implements Listener
             }
 
             // No modification in the wilderness in creative mode.
-            if (instance.creativeRulesApply(block.getLocation()) || instance.config_claims_worldModes.get(block.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
+            if (instance.creativeRulesApply(block.getWorld()) || instance.config_claims_worldModes.get(block.getWorld()) == ClaimsMode.SurvivalRequiringClaims)
             {
                 event.setCancelled(true);
                 return;
@@ -400,7 +400,7 @@ public class EntityEventHandler implements Listener
         boolean applySurfaceRules = world.getEnvironment() == Environment.NORMAL && ((isCreeper && GriefPrevention.instance.config_blockSurfaceCreeperExplosions) || (!isCreeper && GriefPrevention.instance.config_blockSurfaceOtherExplosions));
 
         //special rule for creative worlds: explosions don't destroy anything
-        if (GriefPrevention.instance.creativeRulesApply(location))
+        if (GriefPrevention.instance.creativeRulesApply(location.getWorld()))
         {
             for (int i = 0; i < blocks.size(); i++)
             {
@@ -463,7 +463,7 @@ public class EntityEventHandler implements Listener
     public void onItemSpawn(ItemSpawnEvent event)
     {
         //if in a creative world, cancel the event (don't drop items on the ground)
-        if (GriefPrevention.instance.creativeRulesApply(event.getLocation()))
+        if (GriefPrevention.instance.creativeRulesApply(event.getLocation().getWorld()))
         {
             event.setCancelled(true);
         }
@@ -517,7 +517,7 @@ public class EntityEventHandler implements Listener
     public void onExpBottle(ExpBottleEvent event)
     {
         //if in a creative world, cancel the event (don't drop exp on the ground)
-        if (GriefPrevention.instance.creativeRulesApply(event.getEntity().getLocation()))
+        if (GriefPrevention.instance.creativeRulesApply(event.getEntity().getWorld()))
         {
             event.setExperience(0);
         }
@@ -528,7 +528,7 @@ public class EntityEventHandler implements Listener
     public void onEntitySpawn(CreatureSpawnEvent event)
     {
         //these rules apply only to creative worlds
-        if (!GriefPrevention.instance.creativeRulesApply(event.getLocation())) return;
+        if (!GriefPrevention.instance.creativeRulesApply(event.getLocation().getWorld())) return;
 
         //chicken eggs and breeding could potentially make a mess in the wilderness, once griefers get involved
         SpawnReason reason = event.getSpawnReason();
@@ -557,7 +557,7 @@ public class EntityEventHandler implements Listener
         if (!GriefPrevention.instance.claimsEnabledForWorld(entity.getWorld())) return;
 
         //special rule for creative worlds: killed entities don't drop items or experience orbs
-        if (GriefPrevention.instance.creativeRulesApply(entity.getLocation()))
+        if (GriefPrevention.instance.creativeRulesApply(entity.getWorld()))
         {
             event.setDroppedExp(0);
             event.getDrops().clear();
@@ -703,7 +703,7 @@ public class EntityEventHandler implements Listener
         }
 
         //otherwise, apply entity-count limitations for creative worlds
-        else if (GriefPrevention.instance.creativeRulesApply(event.getEntity().getLocation()))
+        else if (GriefPrevention.instance.creativeRulesApply(event.getEntity().getWorld()))
         {
             PlayerData playerData = this.dataStore.getPlayerData(event.getPlayer().getUniqueId());
             Claim claim = this.dataStore.getClaimAt(event.getBlock().getLocation(), false, playerData.lastClaim);

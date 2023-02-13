@@ -226,7 +226,7 @@ class PlayerEventHandler implements Listener
 
         if (this.howToClaimPattern.matcher(message).matches())
         {
-            if (instance.creativeRulesApply(player.getLocation()))
+            if (instance.creativeRulesApply(player.getWorld()))
             {
                 GriefPrevention.sendMessage(player, TextMode.Info, Messages.CreativeBasicsVideo2, 10L, DataStore.CREATIVE_VIDEO_URL);
             }
@@ -566,10 +566,7 @@ class PlayerEventHandler implements Listener
     static void makeSocialLogEntry(String name, String message)
     {
         StringBuilder entryBuilder = new StringBuilder(name);
-        for (int i = name.length(); i < longestNameLength; i++)
-        {
-            entryBuilder.append(' ');
-        }
+        entryBuilder.append(" ".repeat(Math.max(0, longestNameLength - name.length())));
         entryBuilder.append(": ").append(message);
 
         longestNameLength = Math.max(longestNameLength, name.length());
@@ -843,7 +840,7 @@ class PlayerEventHandler implements Listener
         Player player = event.getEntity();
         Long lastDeathTime = this.deathTimestamps.get(player.getUniqueId());
         long now = Calendar.getInstance().getTimeInMillis();
-        if (lastDeathTime != null && now - lastDeathTime < instance.config_spam_deathMessageCooldownSeconds * 1000 && event.getDeathMessage() != null)
+        if (lastDeathTime != null && now - lastDeathTime < instance.config_spam_deathMessageCooldownSeconds * 1000L && event.getDeathMessage() != null)
         {
             player.sendMessage(event.getDeathMessage());  //let the player assume his death message was broadcasted to everyone
             event.setDeathMessage(null);
@@ -988,7 +985,7 @@ class PlayerEventHandler implements Listener
         Player player = event.getPlayer();
 
         //in creative worlds, dropping items is blocked
-        if (instance.creativeRulesApply(player.getLocation()))
+        if (instance.creativeRulesApply(player.getWorld()))
         {
             event.setCancelled(true);
             return;
@@ -1203,7 +1200,7 @@ class PlayerEventHandler implements Listener
         }
 
         //limit armor placements when entity count is too high
-        if (entity.getType() == EntityType.ARMOR_STAND && instance.creativeRulesApply(player.getLocation()))
+        if (entity.getType() == EntityType.ARMOR_STAND && instance.creativeRulesApply(player.getWorld()))
         {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
             Claim claim = this.dataStore.getClaimAt(entity.getLocation(), false, playerData.lastClaim);
@@ -1503,7 +1500,7 @@ class PlayerEventHandler implements Listener
         }
 
         //otherwise no wilderness dumping in creative mode worlds
-        else if (instance.creativeRulesApply(block.getLocation()))
+        else if (instance.creativeRulesApply(block.getWorld()))
         {
             if (block.getY() >= instance.getSeaLevel(block.getWorld()) - 5 && !player.hasPermission("griefprevention.lava"))
             {
@@ -1684,7 +1681,7 @@ class PlayerEventHandler implements Listener
                         {
                             event.setCancelled(true);
                             GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
-                            player.sendBlockChange(adjacentBlock.getLocation(), adjacentBlock.getType(), adjacentBlock.getData());
+                            player.sendBlockChange(adjacentBlock.getLocation(), adjacentBlock.getBlockData());
                             return;
                         }
                     }
@@ -1932,7 +1929,7 @@ class PlayerEventHandler implements Listener
                             materialInHand == Material.CHEST_MINECART ||
                             materialInHand == Material.TNT_MINECART ||
                             materialInHand == Material.HOPPER_MINECART) &&
-                    !instance.creativeRulesApply(clickedBlock.getLocation()))
+                    !instance.creativeRulesApply(clickedBlock.getWorld()))
             {
                 if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
                 Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), false, playerData.lastClaim);
@@ -1965,7 +1962,7 @@ class PlayerEventHandler implements Listener
                     materialInHand == Material.INFESTED_CRACKED_STONE_BRICKS ||
                     materialInHand == Material.INFESTED_CHISELED_STONE_BRICKS ||
                     materialInHand == Material.HOPPER_MINECART) &&
-                    instance.creativeRulesApply(clickedBlock.getLocation()))
+                    instance.creativeRulesApply(clickedBlock.getWorld()))
             {
                 //player needs build permission at this location
                 String noBuildReason = instance.allowBuild(player, clickedBlock.getLocation(), Material.MINECART);
@@ -2018,11 +2015,15 @@ class PlayerEventHandler implements Listener
                     return;
                 }
 
+                Claim playerClaim = this.dataStore.getClaimAt(player.getLocation(), true, false, playerData.lastClaim);
+                Claim playerClaimParent = playerClaim == null ? null : playerClaim.parent == null ? playerClaim : playerClaim.parent;
+
                 //FEATURE: shovel and stick can be used from a distance away
                 boolean miss = true;
                 if (action == Action.RIGHT_CLICK_AIR) {
-                    //try to find a far away non-air block along line of sight
-                    Block check = raytraceForClaimOrTarget(player, 100, (block, claim) -> claim.is3D() && claim.isCorner(block));
+                    //check of a claim in the looking direction of the player
+                    //only intersect 3d claims that the player is not standing in unless they are standing in the parent claim of a subclaim the ray intersected.
+                    Block check = raytraceForClaimOrTarget(player, 100, (block, claim) -> claim.is3D() && claim != playerClaimParent && (claim.parent == null || claim != playerClaim));
                     if (check == null) {
                         clickedBlock = player.getLocation().getBlock().getRelative(BlockFace.UP);
                     } else {
@@ -2036,15 +2037,27 @@ class PlayerEventHandler implements Listener
                 //if no block, stop here
                 if (clickedBlock == null) return;
 
+                Claim claim;
+                boolean locationFallback = false;
+
                 if (action != Action.RIGHT_CLICK_BLOCK && miss) {
-                    GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooFarAway);
+                    claim = playerClaim;
+                    if (claim == null) {
+                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooFarAway);
 
-                    // Remove visualizations
-                    playerData.setVisibleBoundaries(null);
-                    return;
+                        // Remove visualizations
+                        playerData.setVisibleBoundaries(null);
+                        return;
+                    } else {
+                        locationFallback = claim != null;
+                    }
+                } else {
+                    claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true, playerData.lastClaim);
+                    if (claim == null) {
+                        claim = playerClaim;
+                        locationFallback = claim != null;
+                    }
                 }
-
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, playerData.lastClaim);
 
                 //no claim case
                 if (claim == null)
@@ -2077,14 +2090,14 @@ class PlayerEventHandler implements Listener
                     }
 
                     playerData.lastClaim = claim;
-                    GriefPrevention.sendMessage(player, TextMode.Info, Messages.BlockClaimed, claim.getOwnerName());
+                    GriefPrevention.sendMessage(player, TextMode.Info, locationFallback ? Messages.LocationClaimed : Messages.BlockClaimed, claim.getOwnerName());
 
                     //visualize boundary
                     BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CLAIM);
 
                     if (player.hasPermission("griefprevention.seeclaimsize"))
                     {
-                        GriefPrevention.sendMessage(player, TextMode.Info, "  " + claim.getWidth() + "x" + claim.getHeight() + "=" + claim.getArea());
+                        GriefPrevention.sendMessage(player, TextMode.Info, "  " + claim.bounds.getLength() + "x" + claim.bounds.getWidth() + "=" + claim.getArea());
                     }
 
                     //if permission, tell about the player's offline time
@@ -2330,38 +2343,39 @@ class PlayerEventHandler implements Listener
             {
                 if (clickedBlock.getLocation().equals(playerData.lastShovelLocation)) return;
 
-                boolean is3DSubclaim = playerData.claimResizing.parent != null && playerData.claimResizing.is3D();
+                boolean is3d = playerData.claimResizing.is3D();
 
                 //figure out what the coords of his new claim would be
                 int newx1, newx2, newz1, newz2, newy1, newy2;
-                if (playerData.lastShovelLocation.getBlockX() == playerData.claimResizing.getLesserBoundaryCorner().getBlockX())
+                BoundingBox box = playerData.claimResizing.getBounds();
+                if (playerData.lastShovelLocation.getBlockX() == box.getMinX())
                 {
                     newx1 = clickedBlock.getX();
-                    newx2 = playerData.claimResizing.getGreaterBoundaryCorner().getBlockX();
+                    newx2 = box.getMaxX();
                 }
                 else
                 {
-                    newx1 = playerData.claimResizing.getLesserBoundaryCorner().getBlockX();
+                    newx1 = box.getMinX();
                     newx2 = clickedBlock.getX();
                 }
 
-                if (playerData.lastShovelLocation.getBlockZ() == playerData.claimResizing.getLesserBoundaryCorner().getBlockZ())
+                if (playerData.lastShovelLocation.getBlockZ() == box.getMinZ())
                 {
                     newz1 = clickedBlock.getZ();
-                    newz2 = playerData.claimResizing.getGreaterBoundaryCorner().getBlockZ();
+                    newz2 = box.getMaxZ();
                 }
                 else
                 {
-                    newz1 = playerData.claimResizing.getLesserBoundaryCorner().getBlockZ();
+                    newz1 = box.getMinZ();
                     newz2 = clickedBlock.getZ();
                 }
 
-                if (playerData.lastShovelLocation.getBlockY() == playerData.claimResizing.getLesserBoundaryCorner().getBlockY()) {
-                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
-                    newy2 = playerData.claimResizing.getGreaterBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                if (playerData.lastShovelLocation.getBlockY() == box.getMinY()) {
+                    newy1 = is3d ? clickedBlock.getY() : Claim._2D_HEIGHT;
+                    newy2 = box.getMaxY() - (is3d ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
                 } else {
-                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
-                    newy2 = playerData.claimResizing.getLesserBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                    newy1 = is3d ? clickedBlock.getY() : Claim._2D_HEIGHT;
+                    newy2 = box.getMinY() - (is3d ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
                 }
 
                 this.dataStore.resizeClaimWithChecks(player, playerData, newx1, newx2, newy1, newy2, newz1, newz2);
@@ -2400,6 +2414,13 @@ class PlayerEventHandler implements Listener
                                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.ResizeFailOverlapSubdivision);
                             }
 
+                            // can't create 2d subdivisions in 3d parent clams
+                            if (playerData.shovelMode != ShovelMode._3d && claim.is3D()) {
+                                GriefPrevention.sendMessage(player, TextMode.Err, Messages.Create2DSubdivisionFail3DClaim);
+                                BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
+                                return;
+                            }
+
                             //otherwise start a new subdivision
                             else
                             {
@@ -2422,11 +2443,18 @@ class PlayerEventHandler implements Listener
 
                             boolean is3d = playerData.shovelMode == ShovelMode.Subdivide3d;
 
+                            // can't create 2d subdivisions in 3d parent clams
+                            if (!is3d && playerData.claimSubdividing.is3D()) {
+                                GriefPrevention.sendMessage(player, TextMode.Err, Messages.Create2DSubdivisionFail3DClaim);
+                                BoundaryVisualization.visualizeClaim(player, playerData.claimSubdividing, VisualizationType.CONFLICT_ZONE, clickedBlock);
+                                return;
+                            }
+
                             //try to create a new claim (will return null if this subdivision overlaps another)
                             CreateClaimResult result = this.dataStore.createClaim(
                                     player.getWorld(),
                                     playerData.lastShovelLocation.getBlockX(), clickedBlock.getX(),
-                                    is3d ? playerData.lastShovelLocation.getBlockY() : claim.lesserBoundaryCorner.getBlockY(), is3d ? clickedBlock.getY() : Claim._2D_HEIGHT,
+                                    is3d ? playerData.lastShovelLocation.getBlockY() : claim.getBounds().getMinY(), is3d ? clickedBlock.getY() : Claim._2D_HEIGHT,
                                     playerData.lastShovelLocation.getBlockZ(), clickedBlock.getZ(),
                                     null,  //owner is not used for subdivisions
                                     playerData.claimSubdividing,
@@ -2571,11 +2599,13 @@ class PlayerEventHandler implements Listener
                     playerID = null;
                 }
 
+                boolean is3d = playerData.shovelMode == ShovelMode._3d;
+
                 //try to create a new claim
                 CreateClaimResult result = this.dataStore.createClaim(
                         player.getWorld(),
                         lastShovelLocation.getBlockX(), clickedBlock.getX(),
-                        Math.min(lastShovelLocation.getBlockY(), clickedBlock.getY()) - instance.config_claims_claimsExtendIntoGroundDistance, Claim._2D_HEIGHT,
+                        is3d ? lastShovelLocation.getBlockY() : Math.min(lastShovelLocation.getBlockY(), clickedBlock.getY()) - instance.config_claims_claimsExtendIntoGroundDistance, is3d ? clickedBlock.getY() : Claim._2D_HEIGHT,
                         lastShovelLocation.getBlockZ(), clickedBlock.getZ(),
                         playerID,
                         null, null,
@@ -2696,23 +2726,27 @@ class PlayerEventHandler implements Listener
             Location loc = player.getLocation();
             Material eyeMaterial = player.getEyeLocation().getBlock().getType();
             boolean passThroughWater = (eyeMaterial == Material.WATER);
-            List<Claim> claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(loc.getBlockX() >> 4, loc.getBlockZ() >> 4));
+            int cx = loc.getBlockX() >> 4, cz = loc.getBlockZ() >> 4;
+            List<Claim> claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(cx, cz));
 
             @Override
             public boolean test(Block result) {
                 if (result.isPassable()) {
-                    if (result.getX() % 16 == 0 || result.getZ() % 16 == 0) {
-                        claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(result.getX() >> 4, result.getZ() >> 4));
+                    int rx = result.getX(), ry = result.getY(), rz = result.getZ();
+                    if (rx >> 4 != cx || rz >> 4 != cz) {
+                        claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(cx = rx >> 4, cz = rz >> 4));
                     }
 
                     if (claimsInChunk != null) {
                         for (Claim parent : claimsInChunk) {
-                            if (predicate.test(result, parent)) {
-                                return true;
-                            } else if (!parent.children.isEmpty()) {
-                                for (Claim child : parent.children) {
-                                    if (predicate.test(result, child)) {
-                                        return true;
+                            if (parent.isInside(rx, ry, rz)) {
+                                if (predicate.test(result, parent)) {
+                                    return true;
+                                } else if (!parent.children.isEmpty()) {
+                                    for (Claim child : parent.children) {
+                                        if (child.isInside(rx, ry, rz) && predicate.test(result, child)) {
+                                            return true;
+                                        }
                                     }
                                 }
                             }

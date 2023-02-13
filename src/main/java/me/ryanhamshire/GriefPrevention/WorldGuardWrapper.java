@@ -11,6 +11,7 @@ import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -24,25 +25,30 @@ class WorldGuardWrapper
         this.worldGuard = JavaPlugin.getPlugin(WorldGuardPlugin.class);
     }
 
-    public boolean canBuild(Location lesserCorner, Location greaterCorner, Player creatingPlayer)
+    @Deprecated
+    public boolean canBuild(Location lesser, Location greater, Player creatingPlayer) {
+        return canBuild(lesser.getWorld(), new BoundingBox(lesser, greater), creatingPlayer);
+    }
+
+    public boolean canBuild(org.bukkit.World world, BoundingBox box, Player creatingPlayer)
     {
         try
         {
-            if (lesserCorner.getWorld() == null)
+            if (world == null)
             {
                 return true;
             }
 
             LocalPlayer localPlayer = this.worldGuard.wrapPlayer(creatingPlayer);
             WorldGuardPlatform platform = WorldGuard.getInstance().getPlatform();
-            World world = BukkitAdapter.adapt(lesserCorner.getWorld());
+            World wgWorld = BukkitAdapter.adapt(world);
 
-            if (platform.getSessionManager().hasBypass(localPlayer, world))
+            if (platform.getSessionManager().hasBypass(localPlayer, wgWorld))
             {
                 return true;
             }
 
-            RegionManager manager = platform.getRegionContainer().get(world);
+            RegionManager manager = platform.getRegionContainer().get(wgWorld);
             if (manager == null)
             {
                 return true;
@@ -50,8 +56,8 @@ class WorldGuardWrapper
 
             ProtectedCuboidRegion tempRegion = new ProtectedCuboidRegion(
                     "GP_TEMP",
-                    BlockVector3.at(lesserCorner.getX(), 0, lesserCorner.getZ()),
-                    BlockVector3.at(greaterCorner.getX(), world.getMaxY(), greaterCorner.getZ()));
+                    BlockVector3.at(box.getMinX(), world.getMinHeight(), box.getMinZ()),
+                    BlockVector3.at(box.getMaxX(), world.getMaxHeight(), box.getMaxZ()));
 
             return manager.getApplicableRegions(tempRegion).queryState(localPlayer, Flags.BUILD) == StateFlag.State.ALLOW;
         }

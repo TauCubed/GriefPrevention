@@ -23,9 +23,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
 
     private static final HashMap<BlockData, Boolean> FLOOR_BLOCK_CACHE = new HashMap<>(1024, 0.5F);
 
-    protected ArrayList<FakeFallingBlockElement> fallingElements = new ArrayList<>(32);
-
-    protected int lastHeight = height;
+    protected ArrayList<FakeFallingBlockElement> fallingElements = new ArrayList<>(64);
 
     /**
      * Construct a new {@code FallingBlockVisualization}.

@@ -213,7 +213,7 @@ public class DatabaseDataStore extends DataStore
                         }
                     }
                     //otherwise leave it as-is. no harm done - it won't be requested by name, and this update only happens once.
-                    catch (Exception ex) { }
+                    catch (Exception ignored) { }
                 }
 
                 //refresh data connection in case data migration took a long time
@@ -365,12 +365,12 @@ public class DatabaseDataStore extends DataStore
         for (Claim childClaim : subdivisionsToLoad)
         {
             //find top level claim parent
-            Claim topLevelClaim = this.getClaimAt(childClaim.getLesserBoundaryCorner(), true, null);
+            Claim topLevelClaim = this.getClaimAt(childClaim.getGreaterBoundaryCorner(), true, null);
 
             if (topLevelClaim == null)
             {
                 claimsToRemove.add(childClaim);
-                GriefPrevention.AddLogEntry("Removing orphaned claim subdivision: " + childClaim.getLesserBoundaryCorner().toString());
+                GriefPrevention.AddLogEntry("Removing orphaned claim subdivision: " + childClaim.getGreaterBoundaryCorner().toString());
                 continue;
             }
 
@@ -392,19 +392,6 @@ public class DatabaseDataStore extends DataStore
             statement.execute("DELETE FROM griefprevention_claimdata WHERE id = '-1'");
         }
 
-        // 3dsubclaims conversion
-        for (Claim parent : this.claims) {
-            if (parent.parent == null && parent.greaterBoundaryCorner.getBlockY() != Claim._2D_HEIGHT) {
-                parent.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
-                for (Claim child : parent.children) {
-                    child.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
-                    child.lesserBoundaryCorner.setY(parent.lesserBoundaryCorner.getBlockY());
-                    saveClaim(child);
-                }
-                saveClaim(parent);
-            }
-        }
-
         super.initialize();
     }
 
@@ -423,7 +410,7 @@ public class DatabaseDataStore extends DataStore
         }
         catch (SQLException e)
         {
-            GriefPrevention.AddLogEntry("Unable to save data for claim at " + this.locationToString(claim.lesserBoundaryCorner) + ".  Details:");
+            GriefPrevention.AddLogEntry("Unable to save data for claim at " + this.locationToString(claim.getLesserBoundaryCorner()) + ".  Details:");
             GriefPrevention.AddLogEntry(e.getMessage());
         }
     }
@@ -467,7 +454,7 @@ public class DatabaseDataStore extends DataStore
         }
         catch (SQLException e)
         {
-            GriefPrevention.AddLogEntry("Unable to save data for claim at " + this.locationToString(claim.lesserBoundaryCorner) + ".  Details:");
+            GriefPrevention.AddLogEntry("Unable to save data for claim at " + this.locationToString(claim.getLesserBoundaryCorner()) + ".  Details:");
             GriefPrevention.AddLogEntry(e.getMessage());
         }
     }
@@ -616,7 +603,7 @@ public class DatabaseDataStore extends DataStore
                     this.databaseConnection.close();
                 }
             }
-            catch (SQLException e) {}
+            catch (SQLException ignored) {}
             ;
         }
 

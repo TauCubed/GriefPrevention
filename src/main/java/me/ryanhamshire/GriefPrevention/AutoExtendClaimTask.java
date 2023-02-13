@@ -1,23 +1,14 @@
 package me.ryanhamshire.GriefPrevention;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.ChunkSnapshot;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
+import org.bukkit.*;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Biome;
 import org.bukkit.block.BlockState;
 import org.bukkit.loot.Lootable;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 //automatically extends a claim downward based on block types detected
 class AutoExtendClaimTask implements Runnable
@@ -30,17 +21,18 @@ class AutoExtendClaimTask implements Runnable
      */
     static void scheduleAsync(Claim claim)
     {
-        Location lesserCorner = claim.getLesserBoundaryCorner();
-        Location greaterCorner = claim.getGreaterBoundaryCorner();
-        World world = lesserCorner.getWorld();
+        if (claim.is3D()) return;
+        if (claim.is3D()) return;
+        World world = claim.getWorld();
+        BoundingBox bounds = claim.getBounds();
 
         if (world == null) return;
 
-        int lowestLootableTile = lesserCorner.getBlockY();
+        int lowestLootableTile = bounds.getMinY();
         ArrayList<ChunkSnapshot> snapshots = new ArrayList<>();
-        for (int chunkX = lesserCorner.getBlockX() / 16; chunkX <= greaterCorner.getBlockX() / 16; chunkX++)
+        for (int chunkX = bounds.getMinX() / 16; chunkX <= bounds.getMaxX() / 16; chunkX++)
         {
-            for (int chunkZ = lesserCorner.getBlockZ() / 16; chunkZ <= greaterCorner.getBlockZ() / 16; chunkZ++)
+            for (int chunkZ = bounds.getMinZ() / 16; chunkZ <= bounds.getMaxZ() / 16; chunkZ++)
             {
                 if (world.isChunkLoaded(chunkX, chunkZ))
                 {
@@ -90,9 +82,9 @@ class AutoExtendClaimTask implements Runnable
         this.claim = claim;
         this.chunks = chunks;
         this.worldType = worldType;
-        this.lowestExistingY = Math.min(lowestExistingY, claim.getLesserBoundaryCorner().getBlockY());
+        this.lowestExistingY = Math.min(lowestExistingY, claim.getBounds().getMinY());
         this.minY = Math.max(
-                Objects.requireNonNull(claim.getLesserBoundaryCorner().getWorld()).getMinHeight(),
+                Objects.requireNonNull(claim.getWorld()).getMinHeight(),
                 GriefPrevention.instance.config_claims_maxDepth);
     }
 
@@ -100,7 +92,7 @@ class AutoExtendClaimTask implements Runnable
     public void run()
     {
         int newY = this.getLowestBuiltY();
-        if (newY < this.claim.getLesserBoundaryCorner().getBlockY())
+        if (newY < this.claim.getBounds().getMinY())
         {
             Bukkit.getScheduler().runTask(GriefPrevention.instance, new ExecuteExtendClaimTask(claim, newY));
         }

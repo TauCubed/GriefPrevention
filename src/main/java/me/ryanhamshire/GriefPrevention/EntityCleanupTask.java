@@ -127,7 +127,7 @@ class EntityCleanupTask implements Runnable
             Claim claim = claims.get(j);
 
             //if it's a creative mode claim
-            if (GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()))
+            if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()))
             {
                 //check its entity count and remove any extras
                 claim.allowMoreEntities(true);

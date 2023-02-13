@@ -457,19 +457,6 @@ public class FlatFileDataStore extends DataStore
             }
         }
 
-        // 3dsubclaims conversion
-        for (Claim parent : this.claims) {
-            if (parent.parent == null && parent.greaterBoundaryCorner.getBlockY() != Claim._2D_HEIGHT) {
-                parent.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
-                for (Claim child : parent.children) {
-                    child.greaterBoundaryCorner.setY(Claim._2D_HEIGHT);
-                    child.lesserBoundaryCorner.setY(parent.lesserBoundaryCorner.getBlockY());
-                    saveClaim(child);
-                }
-                saveClaim(parent);
-            }
-        }
-
     }
 
     Claim loadClaim(File file, ArrayList<Long> out_parentID, long claimID) throws IOException, InvalidConfigurationException, Exception
@@ -535,8 +522,8 @@ public class FlatFileDataStore extends DataStore
         YamlConfiguration yaml = new YamlConfiguration();
 
         //boundaries
-        yaml.set("Lesser Boundary Corner", this.locationToString(claim.lesserBoundaryCorner));
-        yaml.set("Greater Boundary Corner", this.locationToString(claim.greaterBoundaryCorner));
+        yaml.set("Lesser Boundary Corner", this.locationToString(claim.getLesserBoundaryCorner()));
+        yaml.set("Greater Boundary Corner", this.locationToString(claim.getGreaterBoundaryCorner()));
 
         //owner
         String ownerID = "";

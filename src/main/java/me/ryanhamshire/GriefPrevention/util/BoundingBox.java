@@ -153,9 +153,8 @@ public class BoundingBox implements Cloneable
      *
      * @param claim the claim
      */
-    public BoundingBox(@NotNull Claim claim)
-    {
-        this(claim.getLesserBoundaryCorner(), claim.getGreaterBoundaryCorner(), false);
+    public BoundingBox(@NotNull Claim claim) {
+        copy(claim);
     }
 
     /**
@@ -199,33 +198,36 @@ public class BoundingBox implements Cloneable
      * @param z2 the second Z value
      */
     private void verify(int x1, int y1, int z1, int x2, int y2, int z2) {
-        if (x1 < x2)
-        {
+        verifyX(x1, x2);
+        verifyY(y1, y2);
+        verifyZ(z1, z2);
+    }
+
+    private void verifyX(int x1, int x2) {
+        if (x1 < x2) {
             this.minX = x1;
             this.maxX = x2;
-        }
-        else
-        {
+        } else {
             this.minX = x2;
             this.maxX = x1;
         }
-        if (y1 < y2)
-        {
+    }
+
+    private void verifyY(int y1, int y2) {
+        if (y1 < y2) {
             this.minY = y1;
             this.maxY = y2;
-        }
-        else
-        {
+        } else {
             this.minY = y2;
             this.maxY = y1;
         }
-        if (z1 < z2)
-        {
+    }
+
+    private void verifyZ(int z1, int z2) {
+        if (z1 < z2) {
             this.minZ = z1;
             this.maxZ = z2;
-        }
-        else
-        {
+        } else {
             this.minZ = z2;
             this.maxZ = z1;
         }
@@ -419,15 +421,16 @@ public class BoundingBox implements Cloneable
      * Copies the dimensions and location of another bounding box.
      *
      * @param other the bounding box to copy
+     * @return itself
      */
-    public void copy(@NotNull BoundingBox other)
-    {
+    public BoundingBox copy(@NotNull BoundingBox other) {
         this.minX = other.minX;
         this.minY = other.minY;
         this.minZ = other.minZ;
         this.maxX = other.maxX;
         this.maxY = other.maxY;
         this.maxZ = other.maxZ;
+        return this;
     }
 
     /**
@@ -436,15 +439,7 @@ public class BoundingBox implements Cloneable
      * @param claim the claim to copy from
      */
     public BoundingBox copy(Claim claim) {
-        Location min = claim.getLesserBoundaryCorner(), max = claim.getGreaterBoundaryCorner();
-        this.minX = min.getBlockX();
-        this.minY = min.getBlockY();
-        this.minZ = min.getBlockZ();
-
-        this.maxX = max.getBlockX();
-        this.maxY = max.getBlockY();
-        this.maxZ = max.getBlockZ();
-        return this;
+        return copy(claim.getBounds());
     }
 
     /**
@@ -457,10 +452,11 @@ public class BoundingBox implements Cloneable
      *
      * @param direction the direction to change size in
      * @param magnitude the magnitude of the resizing
+     * @return itself
      */
-    public void resize(@NotNull BlockFace direction, int magnitude)
+    public BoundingBox resize(@NotNull BlockFace direction, int magnitude)
     {
-        if (magnitude == 0 || direction == BlockFace.SELF) return;
+        if (magnitude == 0 || direction == BlockFace.SELF) return this;
 
         Vector vector = direction.getDirection().multiply(magnitude);
 
@@ -469,7 +465,7 @@ public class BoundingBox implements Cloneable
         int modY = NumberConversions.round(vector.getY());
         int modZ = NumberConversions.round(vector.getZ());
 
-        if (modX == 0 && modY == 0 && modZ == 0) return;
+        if (modX == 0 && modY == 0 && modZ == 0) return this;
 
         // Modify correct point.
         if (direction.getModX() > 0)
@@ -488,6 +484,77 @@ public class BoundingBox implements Cloneable
         // If box is contracting, re-verify points in case corners have swapped.
         if (magnitude < 0)
             verify(this.minX, this.minY, this.minZ, this.maxX, this.maxY, this.maxZ);
+        return this;
+    }
+
+    public BoundingBox expand(int expansion) {
+        return expand(expansion, expansion, expansion);
+    }
+
+    public BoundingBox expand(int x, int y, int z) {
+        expandX(x);
+        expandY(y);
+        expandZ(z);
+        return this;
+    }
+
+    public BoundingBox expandX(int x) {
+        minX -= x;
+        maxX += x;
+        if (x < 0) verifyX(minX, maxX);
+        return this;
+    }
+
+    public BoundingBox expandY(int y) {
+        minY -= y;
+        maxY += y;
+        if (y < 0) verifyY(minY, maxY);
+        return this;
+    }
+
+    public BoundingBox expandZ(int z) {
+        minZ -= z;
+        maxZ += z;
+        if (z < 0) verifyZ(minZ, maxZ);
+        return this;
+    }
+
+    public BoundingBox setX(int x1, int x2) {
+        verifyX(x1, x2);
+        return this;
+    }
+
+    public BoundingBox setY(int y1, int y2) {
+        verifyY(y1, y2);
+        return this;
+    }
+
+    public BoundingBox setZ(int z1, int z2) {
+        verifyZ(z1, z2);
+        return this;
+    }
+
+    public BoundingBox set(int minX, int minY, int minZ, int maxX, int maxY, int maxZ, boolean clamp) {
+        if (clamp) {
+            minX = Math.min(this.maxX, minX);
+            minY = Math.min(this.maxY, minY);
+            minZ = Math.min(this.maxZ, minZ);
+
+            maxX = Math.max(this.minX, maxX);
+            maxY = Math.max(this.minY, maxY);
+            maxZ = Math.max(this.minZ, maxZ);
+        }
+
+        this.minX = minX;
+        this.minY = minY;
+        this.minZ = minZ;
+
+        this.maxX = maxX;
+        this.maxY = maxY;
+        this.maxZ = maxZ;
+
+        if (!clamp) verify(minX, minY, minZ, maxX, maxY, maxZ);
+        return this;
     }
 
     /**
@@ -507,10 +574,11 @@ public class BoundingBox implements Cloneable
      *
      * @param direction the direction to move in
      * @param magnitude the magnitude of the move
+     * @return itself
      */
-    public void move(@NotNull BlockFace direction, int magnitude)
+    public BoundingBox move(@NotNull BlockFace direction, int magnitude)
     {
-        if (magnitude == 0 || direction == BlockFace.SELF) return;
+        if (magnitude == 0 || direction == BlockFace.SELF) return this;
 
         Vector vector = direction.getDirection().multiply(magnitude);
 
@@ -523,6 +591,7 @@ public class BoundingBox implements Cloneable
         int blockZ = NumberConversions.round(vector.getZ());
         this.minZ += blockZ;
         this.maxZ += blockZ;
+        return this;
     }
 
     /**
@@ -531,8 +600,9 @@ public class BoundingBox implements Cloneable
      * @param x the X coordinate to include
      * @param y the Y coordinate to include
      * @param z the Z coordinate to include
+     * @return itself
      */
-    public void union(int x, int y, int z)
+    public BoundingBox union(int x, int y, int z)
     {
         this.minX = Math.min(x, this.minX);
         this.maxX = Math.max(x, this.maxX);
@@ -540,54 +610,60 @@ public class BoundingBox implements Cloneable
         this.maxY = Math.max(y, this.maxY);
         this.minZ = Math.min(z, this.minZ);
         this.maxZ = Math.max(z, this.maxZ);
+        return this;
     }
 
     /**
      * Expands the bounding box to contain the position specified.
      *
      * @param position the position to include
+     * @return itself
      */
-    public void union(@NotNull Block position)
+    public BoundingBox union(@NotNull Block position)
     {
-        this.union(position.getX(), position.getY(), position.getZ());
+        return this.union(position.getX(), position.getY(), position.getZ());
     }
 
     /**
      * Expands the bounding box to contain the position specified.
      *
      * @param position the position to include
+     * @return itself
      */
-    public void union(@NotNull IntVector position)
+    public BoundingBox union(@NotNull IntVector position)
     {
-        this.union(position.x(), position.y(), position.z());
+        return this.union(position.x(), position.y(), position.z());
     }
 
     /**
      * Expands the bounding box to contain the position specified.
      *
      * @param position the position to include
+     * @return itself
      */
-    public void union(@NotNull Vector position)
+    public BoundingBox union(@NotNull Vector position)
     {
-        this.union(position.getBlockX(), position.getBlockY(), position.getBlockZ());
+        return this.union(position.getBlockX(), position.getBlockY(), position.getBlockZ());
     }
 
     /**
      * Expands the bounding box to contain the position specified.
      *
      * @param position the position to include
+     * @return itself
      */
-    public void union(@NotNull Location position)
+    public BoundingBox union(@NotNull Location position)
     {
-        this.union(position.getBlockX(), position.getBlockY(), position.getBlockZ());
+        return this.union(position.getBlockX(), position.getBlockY(), position.getBlockZ());
     }
 
     /**
      * Expands the bounding box to contain the bounding box specified.
      *
      * @param other the bounding box to include
+     * @return itself
      */
-    public void union(@NotNull BoundingBox other)
+    public BoundingBox union(@NotNull BoundingBox other)
     {
         this.minX = Math.min(this.minX, other.minX);
         this.maxX = Math.max(this.maxX, other.maxX);
@@ -595,6 +671,7 @@ public class BoundingBox implements Cloneable
         this.maxY = Math.max(this.maxY, other.maxY);
         this.minZ = Math.min(this.minZ, other.minZ);
         this.maxZ = Math.max(this.maxZ, other.maxZ);
+        return this;
     }
 
     /**

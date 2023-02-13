@@ -255,5 +255,8 @@ public enum Messages
     SubclaimRestricted,
     SubclaimUnrestricted,
     NetherPortalTrapDetectionMessage,
-    PistonExploded;
+    PistonExploded,
+    Create2DSubdivisionFail3DClaim,
+    _3DClaimsMode,
+    LocationClaimed;
 }

@@ -71,7 +71,7 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
         // add to displayed boundaries
         boundaries.add(boundary);
 
-        boolean is3d = boundary.claim() == null ? area.getMinY() >= world.getMinHeight() && area.getMaxY() <= world.getMaxHeight() : boundary.claim().is3D();
+        boolean is3d = boundary.claim() == null ? area.getMinY() >= worldMinHeight && area.getMaxY() <= worldMaxHeight : boundary.claim().is3D();
         Consumer<@NotNull IntVector> addCorner = addCornerElements(boundary, is3d);
         Consumer<@NotNull IntVector> addSide = addSideElements(boundary, is3d);
 

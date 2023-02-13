@@ -65,7 +65,7 @@ class CleanupUnusedClaimTask implements Runnable
                 GriefPrevention.instance.dataStore.deleteClaim(claim, true, true);
 
                 //if configured to do so, restore the land to natural
-                if (GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
+                if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
                 {
                     GriefPrevention.instance.restoreClaim(claim, 0);
                 }
@@ -96,17 +96,17 @@ class CleanupUnusedClaimTask implements Runnable
                 for (Claim claim : claims)
                 {
                     //if configured to do so, restore the land to natural
-                    if (GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
+                    if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
                     {
                         GriefPrevention.instance.restoreClaim(claim, 0);
                     }
                 }
             }
         }
-        else if (GriefPrevention.instance.config_claims_unusedClaimExpirationDays > 0 && GriefPrevention.instance.creativeRulesApply(claim.getLesserBoundaryCorner()))
+        else if (GriefPrevention.instance.config_claims_unusedClaimExpirationDays > 0 && GriefPrevention.instance.creativeRulesApply(claim.getWorld()))
         {
             //avoid scanning large claims and administrative claims
-            if (claim.isAdminClaim() || claim.getWidth() > 25 || claim.getHeight() > 25) return;
+            if (claim.isAdminClaim() || claim.getBounds().getWidth() > 25 || claim.getBounds().getLength() > 25) return;
 
             //otherwise scan the claim content
             int minInvestment = 400;
@@ -124,7 +124,7 @@ class CleanupUnusedClaimTask implements Runnable
                     if (expireEventCanceled())
                         return;
                     GriefPrevention.instance.dataStore.deleteClaim(claim, true, true);
-                    GriefPrevention.AddLogEntry("Removed " + claim.getOwnerName() + "'s unused claim @ " + GriefPrevention.getfriendlyLocationString(claim.getLesserBoundaryCorner()), CustomLogEntryTypes.AdminActivity);
+                    GriefPrevention.AddLogEntry("Removed " + claim.getOwnerName() + "'s unused claim @ " + GriefPrevention.getfriendlyLocationString(claim), CustomLogEntryTypes.AdminActivity);
 
                     //restore the claim area to natural state
                     GriefPrevention.instance.restoreClaim(claim, 0);

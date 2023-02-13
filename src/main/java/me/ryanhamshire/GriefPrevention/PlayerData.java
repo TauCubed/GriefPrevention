@@ -147,7 +147,7 @@ public class PlayerData
 
         long elapsed = now - this.lastPvpTimestamp;
 
-        if (elapsed > GriefPrevention.instance.config_pvp_combatTimeoutSeconds * 1000) //X seconds
+        if (elapsed > GriefPrevention.instance.config_pvp_combatTimeoutSeconds * 1000L) //X seconds
         {
             this.lastPvpTimestamp = 0;
             return false;

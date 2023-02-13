@@ -116,6 +116,11 @@ commands:
       usage: /BasicClaims
       aliases: bc
       permission: griefprevention.claims
+    3dclaims:
+      description: Switches the shovel tool to 3D claim mode, used to make 3d claims.
+      usage: /3dclaims
+      aliases: [3dclaim, claim3d, claims3d]
+      permission: griefprevention.claims
     extendclaim:
       description: Resizes the land claim you're standing in by pushing or pulling its boundary in the direction you're facing.
       usage: /ExtendClaim <numberOfBlocks>
