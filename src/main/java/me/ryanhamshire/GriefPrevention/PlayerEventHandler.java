@@ -809,6 +809,12 @@ class PlayerEventHandler implements Listener
                 }
             }
         }
+
+        Claim atClaim = dataStore.getClaimAt(player.getLocation(), false, playerData.lastClaim);
+        if (checkBannedFromClaim(atClaim, playerData)) {
+            GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer());
+            GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+        }
     }
 
     //when a player spawns, conditionally apply temporary pvp protection
@@ -828,6 +834,12 @@ class PlayerEventHandler implements Listener
         }
 
         instance.checkPvpProtectionNeeded(player);
+
+        Claim toClaim = dataStore.getClaimAt(event.getRespawnLocation(), false, playerData.lastClaim);
+        if (checkBannedFromClaim(toClaim, playerData)) {
+            GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer(), event.getRespawnLocation());
+            GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+        }
     }
 
     //when a player dies...
@@ -1019,6 +1031,14 @@ class PlayerEventHandler implements Listener
         if (event.getTo() == null || event.getTo().getWorld() == null) return;
 
         Player player = event.getPlayer();
+        PlayerData playerData = dataStore.getPlayerData(event.getPlayer().getUniqueId());
+        Claim toClaim = dataStore.getClaimAt(event.getTo(), true, playerData.lastClaim);
+
+        if (checkBannedFromClaim(toClaim, playerData)) {
+            GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer(), event.getTo());
+            GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+            return;
+        }
 
         if (event.getCause() == TeleportCause.NETHER_PORTAL)
         {
@@ -1057,6 +1077,12 @@ class PlayerEventHandler implements Listener
             }
         }
 
+        if (checkBannedFromClaim(toClaim, playerData)) {
+            GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer(), event.getTo());
+            GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+            return;
+        }
+
         //FEATURE: prevent teleport abuse to win sieges
 
         //these rules only apply to siege worlds only
@@ -1085,6 +1111,29 @@ class PlayerEventHandler implements Listener
             event.setCancelled(true);
             return;
         }
+    }
+
+    //when a player moves any distance each tick
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerMove(PlayerMoveEvent event)
+    {
+        // as this event gets called frequently we should only handle if the player moves by one or more blocks
+        if (event.getFrom().getBlockX() != event.getTo().getBlockX() || event.getFrom().getBlockY() != event.getTo().getBlockY() || event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
+            PlayerData playerData = dataStore.getPlayerData(event.getPlayer().getUniqueId());
+            Claim toClaim = dataStore.getClaimAt(event.getTo(), false, playerData.lastClaim);
+            if (checkBannedFromClaim(toClaim, playerData)) {
+                if (toClaim.contains(event.getFrom(), false, false)) {
+                    GriefPrevention.ejectPlayerFromBannedClaim(event.getPlayer(), event.getFrom());
+                } else {
+                    event.setCancelled(true);
+                }
+                GriefPrevention.sendMessage(event.getPlayer(), TextMode.Err, Messages.BannedFromClaim);
+            }
+        }
+    }
+
+    private boolean checkBannedFromClaim(Claim claim, PlayerData whoData) {
+        return claim != null && !whoData.ignoreClaims && claim.checkBanned(whoData.playerID);
     }
 
     //when a player triggers a raid (in a claim)

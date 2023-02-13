@@ -29,6 +29,7 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 
 //manages data stored in the file system
@@ -514,6 +515,14 @@ public class FlatFileDataStore extends DataStore
         claim.modifiedDate = new Date(lastModifiedDate);
         claim.id = claimID;
 
+        for (String s : yaml.getStringList("bannedPlayerIDs")) {
+            try {
+                claim.bannedPlayerIds.add(UUID.fromString(s));
+            } catch (IllegalArgumentException ex) {
+                GriefPrevention.instance.getLogger().log(Level.WARNING, "Failed to deserialize banned player id \"" + s + "\" as it was not a valid UUID for claimID " + claimID, ex);
+            }
+        }
+
         return claim;
     }
 
@@ -550,6 +559,8 @@ public class FlatFileDataStore extends DataStore
         yaml.set("Parent Claim ID", parentID);
 
         yaml.set("inheritNothing", claim.getSubclaimRestrictions());
+
+        yaml.set("bannedPlayerIDs", claim.bannedPlayerIds.stream().map(UUID::toString).toList());
 
         return yaml.saveToString();
     }
