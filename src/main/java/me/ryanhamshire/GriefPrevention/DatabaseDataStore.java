@@ -38,7 +38,7 @@ public class DatabaseDataStore extends DataStore
     private static final String SQL_UPDATE_NAME =
             "UPDATE griefprevention_playerdata SET name = ? WHERE name = ?";
     private static final String SQL_INSERT_CLAIM =
-            "INSERT INTO griefprevention_claimdata (id, owner, lessercorner, greatercorner, builders, containers, accessors, managers, inheritnothing, parentid, bannedplayerids) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO griefprevention_claimdata (id, owner, lessercorner, greatercorner, builders, containers, accessors, managers, inheritnothing, parentid, bannedplayerids, claimExplosions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String SQL_DELETE_CLAIM =
             "DELETE FROM griefprevention_claimdata WHERE id = ?";
     private static final String SQL_SELECT_PLAYER_DATA =
@@ -92,12 +92,13 @@ public class DatabaseDataStore extends DataStore
         {
             //ensure the data tables exist
             statement.execute("CREATE TABLE IF NOT EXISTS griefprevention_nextclaimid (nextid INTEGER)");
-            statement.execute("CREATE TABLE IF NOT EXISTS griefprevention_claimdata (id INTEGER, owner VARCHAR(50), lessercorner VARCHAR(100), greatercorner VARCHAR(100), builders TEXT, containers TEXT, accessors TEXT, managers TEXT, inheritnothing BOOLEAN, parentid INTEGER, bannedplayerids TEXT)");
+            statement.execute("CREATE TABLE IF NOT EXISTS griefprevention_claimdata (id INTEGER, owner VARCHAR(50), lessercorner VARCHAR(100), greatercorner VARCHAR(100), builders TEXT, containers TEXT, accessors TEXT, managers TEXT, inheritnothing BOOLEAN, parentid INTEGER, bannedplayerids TEXT, claimExplosions BOOLEAN)");
             statement.execute("CREATE TABLE IF NOT EXISTS griefprevention_playerdata (name VARCHAR(50), lastlogin DATETIME, accruedblocks INTEGER, bonusblocks INTEGER)");
             statement.execute("CREATE TABLE IF NOT EXISTS griefprevention_schemaversion (version INTEGER)");
 
             //ensure old tables contain columns added in later versions
             statement.execute("ALTER TABLE griefprevention_claimdata ADD IF NOT EXISTS bannedplayerids TEXT");
+            statement.execute("ALTER TABLE griefprevention_claimdata ADD IF NOT EXISTS claimExplosions BOOLEAN");
 
             // By making this run only for MySQL, we technically support SQLite too, as this is the only invalid
             // SQL we use that SQLite does not support. Seeing as its only use is to update VERY old, existing, MySQL
@@ -354,6 +355,8 @@ public class DatabaseDataStore extends DataStore
                     }
                 }
 
+                claim.areExplosivesAllowed = results.getBoolean("claimExplosions");
+
                 if (removeClaim)
                 {
                     claimsToRemove.add(claim);
@@ -454,6 +457,8 @@ public class DatabaseDataStore extends DataStore
 
         String bannedPlayers = this.storageStringBuilder(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
 
+        boolean claimExplosions = claim.areExplosivesAllowed;
+
         try (PreparedStatement insertStmt = this.databaseConnection.prepareStatement(SQL_INSERT_CLAIM))
         {
 
@@ -468,6 +473,7 @@ public class DatabaseDataStore extends DataStore
             insertStmt.setBoolean(9, inheritNothing);
             insertStmt.setLong(10, parentId);
             insertStmt.setString(11, bannedPlayers);
+            insertStmt.setBoolean(12, claimExplosions);
             insertStmt.executeUpdate();
         }
         catch (SQLException e)

@@ -2231,6 +2231,7 @@ public class GriefPrevention extends JavaPlugin
                     claim.areExplosivesAllowed = true;
                     GriefPrevention.sendMessage(player, TextMode.Success, Messages.ExplosivesEnabled);
                 }
+                dataStore.saveClaim(claim);
             }
 
             return true;

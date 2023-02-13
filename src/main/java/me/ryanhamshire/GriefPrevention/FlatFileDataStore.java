@@ -523,6 +523,8 @@ public class FlatFileDataStore extends DataStore
             }
         }
 
+        claim.areExplosivesAllowed = yaml.getBoolean("claimExplosions", false);
+
         return claim;
     }
 
@@ -561,6 +563,8 @@ public class FlatFileDataStore extends DataStore
         yaml.set("inheritNothing", claim.getSubclaimRestrictions());
 
         yaml.set("bannedPlayerIDs", claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+
+        yaml.set("claimExplosions", claim.areExplosivesAllowed);
 
         return yaml.saveToString();
     }
