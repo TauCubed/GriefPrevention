@@ -787,9 +787,16 @@ public abstract class DataStore
     //finds a claim by ID
     public synchronized Claim getClaim(long id)
     {
-        for (Claim claim : this.claims)
-        {
-            if (claim.inDataStore && claim.getID() == id) return claim;
+        for (Claim claim : this.claims) {
+            if (claim.inDataStore) {
+                if (claim.getID() == id) {
+                    return claim;
+                } else if (claim.children.size() > 0) {
+                    for (Claim child : claim.children) {
+                        if (child.inDataStore && child.getID() == id) return child;
+                    }
+                }
+            }
         }
 
         return null;
@@ -1078,6 +1085,8 @@ public abstract class DataStore
         if (claim.is3D()) return;
 
         newDepth = sanitizeClaimDepth(claim.getWorld(), newDepth);
+
+        if (claim.getLesserBoundaryCorner().getBlockY() <= newDepth) return;
 
         //call event and return if event got cancelled
         ClaimExtendEvent event = new ClaimExtendEvent(claim, newDepth);

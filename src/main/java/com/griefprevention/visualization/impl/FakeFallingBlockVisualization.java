@@ -19,6 +19,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.function.Consumer;
 
+/**
+ * This visualization uses fake falling block entities that glow (can be seen through other blocks)<br>
+ * It requires ProtocolLib to work.
+ * @author <a href="https://github.com/TauCubed">TauCubed</a>
+ */
 public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
 
     private static final HashMap<BlockData, Boolean> FLOOR_BLOCK_CACHE = new HashMap<>(1024, 0.5F);

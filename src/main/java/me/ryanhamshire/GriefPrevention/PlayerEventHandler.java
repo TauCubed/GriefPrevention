@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import me.ryanhamshire.GriefPrevention.tags.GPTags;
 import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
@@ -1700,7 +1701,7 @@ class PlayerEventHandler implements Listener
             return;
         }
 
-        if (instance.config_visualizationGlowingFallingBlock && (action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR)) {
+        if (instance.config_visualizationGlowingFallingBlock) {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
             if (playerData.getVisibleBoundaries() instanceof FakeFallingBlockVisualization vis && event.getClickedBlock() != null) {
                 FakeFallingBlockElement fe = vis.elementByLocation(event.getClickedBlock().getLocation());
@@ -1919,28 +1920,16 @@ class PlayerEventHandler implements Listener
             ItemStack itemInHand = instance.getItemInHand(player, hand);
             Material materialInHand = itemInHand.getType();
 
-            Set<Material> spawn_eggs = new HashSet<>();
-            Set<Material> dyes = new HashSet<>();
-
-            for (Material material : Material.values())
-            {
-                if (material.isLegacy()) continue;
-                if (material.name().endsWith("_SPAWN_EGG"))
-                    spawn_eggs.add(material);
-                else if (material.name().endsWith("_DYE"))
-                    dyes.add(material);
-            }
-
             //if it's bonemeal, armor stand, spawn egg, etc - check for build permission //RoboMWM: also check flint and steel to stop TNT ignition
             //add glowing ink sac and ink sac, due to their usage on signs
             if (clickedBlock != null && (materialInHand == Material.BONE_MEAL
                     || materialInHand == Material.ARMOR_STAND
-                    || (spawn_eggs.contains(materialInHand) && GriefPrevention.instance.config_claims_preventGlobalMonsterEggs)
+                    || (GPTags.SPAWN_EGGS.isTagged(materialInHand) && GriefPrevention.instance.config_claims_preventGlobalMonsterEggs)
                     || materialInHand == Material.END_CRYSTAL
                     || materialInHand == Material.FLINT_AND_STEEL
                     || materialInHand == Material.INK_SAC
                     || materialInHand == Material.GLOW_INK_SAC
-                    || dyes.contains(materialInHand)))
+                    || GPTags.DYES.isTagged(materialInHand)))
             {
                 String noBuildReason = instance
                         .allowBuild(player, clickedBlock
@@ -2003,7 +1992,7 @@ class PlayerEventHandler implements Listener
                     materialInHand == Material.ARMOR_STAND ||
                     materialInHand == Material.ITEM_FRAME ||
                     materialInHand == Material.GLOW_ITEM_FRAME ||
-                    spawn_eggs.contains(materialInHand) ||
+                    GPTags.SPAWN_EGGS.isTagged(materialInHand) ||
                     materialInHand == Material.INFESTED_STONE ||
                     materialInHand == Material.INFESTED_COBBLESTONE ||
                     materialInHand == Material.INFESTED_STONE_BRICKS ||
