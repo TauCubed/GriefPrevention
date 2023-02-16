@@ -1799,7 +1799,7 @@ public class GriefPrevention extends JavaPlugin
                 if (claim.parent == null) {
                     BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CLAIM);
                 } else {
-                    BoundaryVisualization.visualizeArea(player, new BoundingBox(claim.lesserBoundaryCorner, claim.greaterBoundaryCorner), VisualizationType.SUBDIVISION);
+                    BoundaryVisualization.visualizeArea(player, claim.getBounds(), VisualizationType.SUBDIVISION);
                 }
                 sendMessage(player, TextMode.Info, sb.toString());
             }
