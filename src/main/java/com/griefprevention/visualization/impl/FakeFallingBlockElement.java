@@ -25,6 +25,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.Map.Entry;
 
+/**
+ * Fake falling block visualization element for boundary visualization.<br>
+ * Used to spawn fake falling blocks that have the glowing effect and can be added to specified scoreboard teams
+ * @author <a href="https://github.com/TauCubed">TauCubed</a>
+ */
 public class FakeFallingBlockElement extends BlockElement {
 
     private static final HashMap<BlockData, Boolean> INHERIT_BLOCK_CACHE = new HashMap<>(1024, 0.5F);
@@ -72,25 +77,28 @@ public class FakeFallingBlockElement extends BlockElement {
             changedBlock = true;
         }
 
+        // spawn falling block
         PacketContainer addEntity = new PacketContainer(PacketType.Play.Server.SPAWN_ENTITY);
-        addEntity.getEntityTypeModifier().write(0, EntityType.FALLING_BLOCK);
+        addEntity.getEntityTypeModifier().write(0, EntityType.FALLING_BLOCK); // the type to spawn
         addEntity.getIntegers()
                 .write(0, entityId) // entityId
                 .write(4, ProtocolUtil.getBlockStateId(fakeData)); // entityData in this case the ID of the blockstate
-        addEntity.getUUIDs().write(0, entityUid);
+        addEntity.getUUIDs().write(0, entityUid); // the UUID of the entity
         addEntity.getDoubles()
-                .write(0, pos.x() + 0.5)
-                .write(1, pos.y() + 0.0)
-                .write(2, pos.z() + 0.5);
+                .write(0, pos.x() + 0.5) // the X of the entity
+                .write(1, pos.y() + 0.0) // the Y of the entity
+                .write(2, pos.z() + 0.5);// the Z of the entity
 
+        // make the falling blocks glow and have no gravity
         PacketContainer entityMeta = new PacketContainer(PacketType.Play.Server.ENTITY_METADATA);
-        entityMeta.getIntegers().write(0, entityId);
-        entityMeta.getDataValueCollectionModifier().write(0, DATAWATCHERS);
+        entityMeta.getIntegers().write(0, entityId); // the target entityId
+        entityMeta.getDataValueCollectionModifier().write(0, DATAWATCHERS); // the cached data watchers
 
+        // add the blocks to the scoreboard team to give color to the glow effect
         PacketContainer addToTeam = new PacketContainer(Server.SCOREBOARD_TEAM);
-        addToTeam.getIntegers().write(0, 3); // add
+        addToTeam.getIntegers().write(0, 3); // add to team action
         addToTeam.getStrings().write(0, teamName); // team name
-        addToTeam.getSpecificModifier(Collection.class).write(0, List.of(entityUid.toString())); // UUIDs
+        addToTeam.getSpecificModifier(Collection.class).write(0, List.of(entityUid.toString())); // UUIDs of team members to add
 
         ProtocolLibrary.getProtocolManager().sendServerPacket(player, addEntity);
         ProtocolLibrary.getProtocolManager().sendServerPacket(player, entityMeta);
@@ -151,9 +159,9 @@ public class FakeFallingBlockElement extends BlockElement {
             // now that we have sorted each element UUID by its team, we can bulk remove them.
             for (Entry<String, ArrayList<String>> entry : teamToUUID.entrySet()) {
                 PacketContainer teamPacket = new PacketContainer(Server.SCOREBOARD_TEAM);
-                teamPacket.getIntegers().write(0, 4); // remove
+                teamPacket.getIntegers().write(0, 4); // remove action
                 teamPacket.getStrings().write(0, entry.getKey()); // team name
-                teamPacket.getSpecificModifier(Collection.class).write(0, entry.getValue()); // element UUIDs to remove
+                teamPacket.getSpecificModifier(Collection.class).write(0, entry.getValue()); // UUIDs of team members to remove
                 ProtocolLibrary.getProtocolManager().sendServerPacket(whom, teamPacket);
             }
 
