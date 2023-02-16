@@ -1654,7 +1654,7 @@ class PlayerEventHandler implements Listener
             return;
         }
 
-        if (instance.config_visualizationGlowingFallingBlock && (action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR)) {
+        if (instance.config_visualizationGlowingFallingBlock) {
             if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
             if (playerData.getVisibleBoundaries() instanceof FakeFallingBlockVisualization vis && event.getClickedBlock() != null) {
                 FakeFallingBlockElement fe = vis.elementByLocation(event.getClickedBlock().getLocation());

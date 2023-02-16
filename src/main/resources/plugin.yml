@@ -5,6 +5,10 @@ dev-url: https://dev.bukkit.org/projects/grief-prevention
 version: '${git.commit.id.describe}'
 api-version: '1.17'
 commands:
+    claiminfo:
+      description: Reports information about the current or specified claim
+      usage: /ClaimInfo <[-i, --id] <claimId>, [-s, --short] or [-l, --long]>
+      permission: griefprevention.claiminfo
     abandonclaim:
       description: Deletes a claim.
       usage: /AbandonClaim

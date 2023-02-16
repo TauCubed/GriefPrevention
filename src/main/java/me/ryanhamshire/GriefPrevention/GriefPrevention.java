@@ -18,6 +18,7 @@
 
 package me.ryanhamshire.GriefPrevention;
 
+import com.google.common.base.Joiner;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.DataStore.NoTransferException;
@@ -26,6 +27,7 @@ import me.ryanhamshire.GriefPrevention.events.SaveTrappedPlayerEvent;
 import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.metrics.MetricsHandler;
+import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.BanList.Type;
@@ -1720,6 +1722,90 @@ public class GriefPrevention extends JavaPlugin
                 this.dataStore.saveClaim(claim);
             }
 
+            return true;
+        }
+
+        else if (cmd.getName().equalsIgnoreCase("claiminfo")) {
+            Claim claim = dataStore.getClaimAt(player.getLocation(), false, null);
+            String[] tokens = Joiner.on(' ').join(args).split("--?");
+            boolean shortInfo = false;
+            boolean longInfo = false;
+            for (String token : tokens) {
+                switch (token.split("\\s")[0].toLowerCase()) {
+                    case "i":
+                    case "id":
+                        String[] id = token.split("\\s");
+                        if (id.length == 2) {
+                            try {
+                                claim = dataStore.getClaim(Integer.parseInt(id[1]));
+                                if (claim == null) {
+                                    sendMessage(player, TextMode.Err, "Claim not found: \"" + id[1] + "\"");
+                                    return true;
+                                }
+                            } catch (IllegalArgumentException e) {
+                                sendMessage(player, TextMode.Err, e.getMessage());
+                                return false;
+                            }
+                        } else return false;
+                        break;
+                    case "s":
+                    case "short":
+                        shortInfo = true;
+                        longInfo = false;
+                        break;
+                    case "l":
+                    case "long":
+                        longInfo = true;
+                        shortInfo = false;
+                        break;
+                    default:
+                        if (token.length() == 0) break;
+                        sendMessage(player, TextMode.Err, "Invalid argument: \"" + token + "\"");
+                        return false;
+                }
+            }
+
+            if (claim == null) {
+                sendMessage(player, TextMode.Err, Messages.BlockNotClaimed);
+            } else {
+                StringBuilder sb = new StringBuilder("Claim Info:\n");
+                Location lesser = claim.getLesserBoundaryCorner();
+                Location greater = claim.getGreaterBoundaryCorner();
+
+                sb.append("  ID: %d\n".formatted(claim.id));
+                if (claim.parent != null) sb.append("  Parent ID: %d\n".formatted(claim.parent.id));
+                UUID ownerId = claim.parent == null ? claim.ownerID : claim.parent.ownerID;
+                if (ownerId != null) sb.append("  Owner UUID: %s\n".formatted(ownerId));
+                sb.append("  Owner Name: %s\n".formatted(ownerId == null ? "<Administrator>" : lookupPlayerName(ownerId)));
+                sb.append("  Lesser Corner: X=%d, Y=%d, Z=%d\n".formatted(lesser.getBlockX(), lesser.getBlockY(), lesser.getBlockZ()));
+                sb.append("  Greater Corner: X=%d, Y=%d, Z=%d\n".formatted(greater.getBlockX(), greater.getBlockY(), greater.getBlockZ()));
+                sb.append("  Claim Explosions: %b\n".formatted(claim.areExplosivesAllowed));
+                if (claim.parent != null) sb.append("  Restricted: %b".formatted(claim.getSubclaimRestrictions()));
+                if (claim.parent == null) {
+                    sb.append("  Children:");
+                    shortInfo = shortInfo || !longInfo && claim.children.size() > 8;
+                    if (shortInfo || claim.children.size() == 0) {
+                        sb.append(" %d\n".formatted(claim.children.size()));
+                    } else {
+                        for (Claim child : claim.children) {
+                            lesser = child.getLesserBoundaryCorner();
+                            greater = child.getGreaterBoundaryCorner();
+                            sb.append("\n    ID: %d\n".formatted(child.id));
+                            sb.append("      Lesser Corner: X=%d, Y=%d, Z=%d\n".formatted(lesser.getBlockX(), lesser.getBlockY(), lesser.getBlockZ()));
+                            sb.append("      Greater Corner: X=%d, Y=%d, Z=%d\n".formatted(greater.getBlockX(), greater.getBlockY(), greater.getBlockZ()));
+                            sb.append("      Claim Explosions: %b\n".formatted(child.areExplosivesAllowed));
+                            sb.append("      Restricted: %b".formatted(child.getSubclaimRestrictions()));
+                        }
+                    }
+                }
+
+                if (claim.parent == null) {
+                    BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CLAIM);
+                } else {
+                    BoundaryVisualization.visualizeArea(player, new BoundingBox(claim.lesserBoundaryCorner, claim.greaterBoundaryCorner), VisualizationType.SUBDIVISION);
+                }
+                sendMessage(player, TextMode.Info, sb.toString());
+            }
             return true;
         }
 
