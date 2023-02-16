@@ -1084,7 +1084,7 @@ public class GriefPrevention extends JavaPlugin
             CreateClaimResult result = this.dataStore.createClaim(lc.getWorld(),
                     lc.getBlockX(), gc.getBlockX(),
                     lc.getBlockY() - GriefPrevention.instance.config_claims_claimsExtendIntoGroundDistance - 1,
-                    gc.getWorld().getHighestBlockYAt(gc) - GriefPrevention.instance.config_claims_claimsExtendIntoGroundDistance - 1,
+                    Claim._2D_HEIGHT,
                     lc.getBlockZ(), gc.getBlockZ(),
                     player.getUniqueId(), null, null, player);
             if (!result.succeeded || result.claim == null)
