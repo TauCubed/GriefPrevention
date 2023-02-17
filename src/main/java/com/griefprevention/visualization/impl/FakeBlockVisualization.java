@@ -8,7 +8,6 @@ import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Lightable;
 import org.jetbrains.annotations.NotNull;
@@ -39,12 +38,7 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
     }
 
     @Override
-    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary) {
-        return addCornerElements(boundary, false);
-    }
-
-    @Override
-    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary, boolean is3d)
+    protected @NotNull Consumer<@NotNull IntVector> addCornerElements(@NotNull Boundary boundary)
     {
         return addBlockElement(switch (boundary.type())
         {
@@ -56,16 +50,11 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
                 yield fakeData;
             }
             default -> Material.GLOWSTONE.createBlockData();
-        }, is3d);
+        });
     }
 
     @Override
-    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary) {
-        return addSideElements(boundary, false);
-    }
-
-    @Override
-    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary, boolean is3d)
+    protected @NotNull Consumer<@NotNull IntVector> addSideElements(@NotNull Boundary boundary)
     {
         // Determine BlockData from boundary type to cache for reuse in function.
         return addBlockElement(switch (boundary.type())
@@ -75,7 +64,7 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
             case INITIALIZE_ZONE, NATURE_RESTORATION_ZONE -> Material.DIAMOND_BLOCK.createBlockData();
             case CONFLICT_ZONE -> Material.NETHERRACK.createBlockData();
             default -> Material.GOLD_BLOCK.createBlockData();
-        }, is3d);
+        });
     }
 
     /**
@@ -84,45 +73,23 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
      * @param fakeData the fake {@link BlockData}
      * @return the function for determining a visible fake block location
      */
-    protected @NotNull Consumer<@NotNull IntVector> addBlockElement(@NotNull BlockData fakeData, boolean is3d)
+    protected @NotNull Consumer<@NotNull IntVector> addBlockElement(@NotNull BlockData fakeData)
     {
         return vector -> {
-            // Obtain visible location from starting point.
-            Block visibleLocation = is3d ? world.getBlockAt(vector.x(), vector.y(), vector.z()) : getVisibleLocation(vector);
             // Create an element using our fake data and the determined block's real data.
-            elements.add(new FakeBlockElement(new IntVector(visibleLocation), visibleLocation.getBlockData(), fakeData));
+            elements.add(new FakeBlockElement(vector, vector.toBlock(world).getBlockData(), fakeData));
         };
     }
 
-    /**
-     * Find a location that should be visible to players. This causes the visualization to "cling" to the ground.
-     *
-     * @param vector the {@link IntVector} of the display location
-     * @return the located {@link Block}
-     */
-    protected Block getVisibleLocation(@NotNull IntVector vector)
-    {
-        Block block = vector.toBlock(world);
-        BlockFace direction = (isTransparent(block)) ? BlockFace.DOWN : BlockFace.UP;
-
-        while (block.getY() >= world.getMinHeight() &&
-                block.getY() < world.getMaxHeight() - 1 &&
-                (!isTransparent(block.getRelative(BlockFace.UP)) || isTransparent(block)))
-        {
-            block = block.getRelative(direction);
+    @Override
+    public boolean isValidFloor(World world, int originalY, int x, int y, int z) {
+        if (!isTransparent(world.getBlockAt(x, y, z))) {
+            return isTransparent(world.getBlockAt(x, y + 1, z)) || isTransparent(world.getBlockAt(x, y - 1, z));
         }
-
-        return block;
+        return false;
     }
 
-    /**
-     * Helper method for determining if a {@link Block} is transparent from the top down.
-     *
-     * @param block the {@code Block}
-     * @return true if transparent
-     */
-    protected boolean isTransparent(@NotNull Block block)
-    {
+    private boolean isTransparent(Block block) {
         Material blockMaterial = block.getType();
 
         // Custom per-material definitions.
@@ -142,7 +109,7 @@ public class FakeBlockVisualization extends BlockBoundaryVisualization
                 || Tag.WALL_SIGNS.isTagged(blockMaterial))
             return true;
 
-        return block.getType().isTransparent();
+        return blockMaterial.isTransparent();
     }
 
 }
