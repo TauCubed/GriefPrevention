@@ -1,11 +1,11 @@
 package com.griefprevention.visualization;
 
+import com.griefprevention.events.BoundaryVisualizationEvent;
+import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.CustomLogEntryTypes;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.PlayerData;
-import com.griefprevention.events.BoundaryVisualizationEvent;
-import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -18,7 +18,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A representation of a system for displaying rectangular {@link Boundary Boundaries} to {@link Player Players}.
@@ -231,10 +230,12 @@ public abstract class BoundaryVisualization
 
         // Gather all boundaries. It's important that children override parent so
         // that users can always find children, no matter how oddly sized or positioned.
-        return Stream.concat(
-                Stream.of(new Boundary(claim, type)),
-                claim.children.stream().map(child -> new Boundary(child, VisualizationType.SUBDIVISION)))
-                .collect(Collectors.toSet());
+        List<Boundary> boundaries = new ArrayList<>(1 + claim.children.size());
+        boundaries.add(new Boundary(claim, type));
+        for (Claim child : claim.children) {
+            boundaries.add(new Boundary(child, VisualizationType.SUBDIVISION));
+        }
+        return boundaries;
     }
 
     /**

@@ -2346,11 +2346,11 @@ class PlayerEventHandler implements Listener
                 }
 
                 if (playerData.lastShovelLocation.getBlockY() == playerData.claimResizing.getLesserBoundaryCorner().getBlockY()) {
-                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
-                    newy2 = playerData.claimResizing.getGreaterBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                    newy1 = is3DSubclaim ? playerData.claimResizing.getGreaterBoundaryCorner().getBlockY() : Claim._2D_HEIGHT;
+                    newy2 = clickedBlock.getY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
                 } else {
-                    newy1 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
-                    newy2 = playerData.claimResizing.getLesserBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                    newy1 = playerData.claimResizing.getLesserBoundaryCorner().getBlockY() - (is3DSubclaim ? 0 : instance.config_claims_claimsExtendIntoGroundDistance);
+                    newy2 = is3DSubclaim ? clickedBlock.getY() : Claim._2D_HEIGHT;
                 }
 
                 this.dataStore.resizeClaimWithChecks(player, playerData, newx1, newx2, newy1, newy2, newz1, newz2);
