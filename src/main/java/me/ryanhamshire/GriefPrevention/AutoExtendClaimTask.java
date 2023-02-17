@@ -22,9 +22,8 @@ class AutoExtendClaimTask implements Runnable
     static void scheduleAsync(Claim claim)
     {
         if (claim.is3D()) return;
-        if (claim.is3D()) return;
         World world = claim.getWorld();
-        BoundingBox bounds = claim.getBounds();
+        BoundingBox bounds = claim.getBounds().clone();
 
         if (world == null) return;
 
@@ -141,7 +140,7 @@ class AutoExtendClaimTask implements Runnable
                         if (yTooSmall(y)) return this.minY;
                     }
 
-                    // Undo increment for unsuccessful player block check.
+                    // Undo decrement for unsuccessful player block check.
                     newY++;
 
                     // Move built level down to current level.
