@@ -793,15 +793,6 @@ public class Claim
             return false;
         }
 
-        //additional check for subdivisions
-        //you're only in a subdivision when you're also in its parent claim
-        //NOTE: if a player creates subdivions then resizes the parent claim, it's possible that
-        //a subdivision can reach outside of its parent's boundaries.  so this check is important!
-        if (this.parent != null)
-        {
-            return this.parent.contains(location, ignoreHeight, false);
-        }
-
         //code to exclude subdivisions in this check
         else if (excludeSubdivisions)
         {
