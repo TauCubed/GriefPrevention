@@ -3,6 +3,7 @@ package com.griefprevention.visualization.impl;
 import com.griefprevention.util.IntVector;
 import com.griefprevention.visualization.BlockBoundaryVisualization;
 import com.griefprevention.visualization.Boundary;
+import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.PlayerData;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import me.ryanhamshire.GriefPrevention.util.ScoreboardColors;
@@ -14,7 +15,6 @@ import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.function.Consumer;
@@ -28,7 +28,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
 
     private static final HashMap<BlockData, Boolean> FLOOR_BLOCK_CACHE = new HashMap<>(1024, 0.5F);
 
-    protected ArrayList<FakeFallingBlockElement> fallingElements = new ArrayList<>(32);
+    protected HashMap<IntVector, FakeFallingBlockElement> fallingElements = new HashMap<>(32);
 
     protected int lastHeight = height;
 
@@ -53,7 +53,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
         // If area is not inside display zone, there is nothing to display.
         if (displayZone == null) return;
 
-        boolean is3d = boundary.claim() == null ? area.getMinY() >= worldMinHeight && area.getMaxY() <= worldMaxHeight : boundary.claim().is3D();
+        boolean is3d = area.getMaxY() < Claim._2D_HEIGHT;
         Consumer<@NotNull IntVector> addCorner = addCornerElements(boundary, is3d);
         Consumer<@NotNull IntVector> addSide = addSideElements(boundary, is3d);
 
@@ -181,7 +181,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
     protected void apply(@NotNull Player player, @NotNull PlayerData playerData) {
         super.apply(player, playerData);
         // Apply all visualization elements.
-        fallingElements.forEach(fe -> fe.draw(player, world));
+        fallingElements.values().forEach(fe -> fe.draw(player, world));
     }
 
     @Override
@@ -207,7 +207,8 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
 
     public @NotNull Consumer<@NotNull IntVector> addFallingBlockElement(@NotNull BlockData blockData, @NotNull Team teamColor) {
         return vector -> {
-            fallingElements.add(new FakeFallingBlockElement(vector, teamColor, blockData));
+            if (fallingElements.containsKey(vector)) return; // don't draw over existing elements
+            fallingElements.put(vector, new FakeFallingBlockElement(vector, teamColor, blockData));
         };
     }
 
@@ -216,7 +217,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
     }
 
     public FakeFallingBlockElement elementByEID(int entityId) {
-        for (FakeFallingBlockElement element : fallingElements) {
+        for (FakeFallingBlockElement element : fallingElements.values()) {
             if (element.entityId() == entityId) return element;
         }
         return null;
@@ -224,14 +225,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
 
     public FakeFallingBlockElement elementByLocation(Location where) {
         if (getWorld() != where.getWorld()) return null;
-        int x = where.getBlockX(), y = where.getBlockY(), z = where.getBlockZ();
-        for (FakeFallingBlockElement element : fallingElements) {
-            IntVector vec = element.getCoordinate();
-            if (vec.x() == x && vec.y() == y && vec.z() == z) {
-                return element;
-            }
-        }
-        return null;
+        return fallingElements.get(new IntVector(where));
     }
 
     public World getWorld() {
@@ -249,7 +243,7 @@ public class FakeFallingBlockVisualization extends BlockBoundaryVisualization {
     }
 
     protected void erase(@NotNull Player player) {
-        FakeFallingBlockElement.eraseAll(player, fallingElements);
+        FakeFallingBlockElement.eraseAll(player, fallingElements.values());
     }
 
     public static int findFloor(World world, int x, int y, int z, int depth, int minY, int def) {

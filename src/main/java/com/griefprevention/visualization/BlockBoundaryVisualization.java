@@ -1,6 +1,7 @@
 package com.griefprevention.visualization;
 
 import com.griefprevention.util.IntVector;
+import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -71,7 +72,7 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
         // add to displayed boundaries
         boundaries.add(boundary);
 
-        boolean is3d = boundary.claim() == null ? area.getMinY() >= world.getMinHeight() && area.getMaxY() <= world.getMaxHeight() : boundary.claim().is3D();
+        boolean is3d = area.getMaxY() < Claim._2D_HEIGHT;
         Consumer<@NotNull IntVector> addCorner = addCornerElements(boundary, is3d);
         Consumer<@NotNull IntVector> addSide = addSideElements(boundary, is3d);
 

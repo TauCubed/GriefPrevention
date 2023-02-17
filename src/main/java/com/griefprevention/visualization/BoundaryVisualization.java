@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public abstract class BoundaryVisualization
 {
 
-    protected final Collection<Boundary> boundaries = new HashSet<>();
+    protected final Collection<Boundary> boundaries = new ArrayList<>();
     protected final Collection<Boundary> elements = boundaries;
     protected final @NotNull World world;
     protected final @NotNull IntVector visualizeFrom;
@@ -70,7 +70,7 @@ public abstract class BoundaryVisualization
         playerData.setVisibleBoundaries(this);
 
         // Apply all visualization elements.
-        boundaries.forEach(element -> draw(player, element));
+        for (Boundary boundary : boundaries) draw(player, boundary);
 
         // Schedule automatic reversion.
         scheduleRevert(player, playerData);
@@ -126,7 +126,7 @@ public abstract class BoundaryVisualization
         PlayerData data = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
 
         // Revert data as necessary for any sent elements.
-        boundaries.forEach(element -> erase(player, element));
+        for (Boundary boundary : boundaries) erase(player, boundary);
     }
 
     /**
@@ -231,10 +231,10 @@ public abstract class BoundaryVisualization
         // Gather all boundaries. It's important that children override parent so
         // that users can always find children, no matter how oddly sized or positioned.
         List<Boundary> boundaries = new ArrayList<>(1 + claim.children.size());
-        boundaries.add(new Boundary(claim, type));
         for (Claim child : claim.children) {
             boundaries.add(new Boundary(child, VisualizationType.SUBDIVISION));
         }
+        boundaries.add(new Boundary(claim, type));
         return boundaries;
     }
 
@@ -270,7 +270,11 @@ public abstract class BoundaryVisualization
 
         Player player = event.getPlayer();
         BoundaryVisualization visualization = event.getProvider().create(player.getWorld(), event.getCenter(), event.getHeight());
-        event.getBoundaries().stream().filter(Objects::nonNull).forEach(visualization.boundaries::add);
+        for (Boundary boundary : event.getBoundaries()) {
+            if (boundary != null) {
+                visualization.boundaries.add(boundary);
+            }
+        }
 
         PlayerData playerData = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
 
