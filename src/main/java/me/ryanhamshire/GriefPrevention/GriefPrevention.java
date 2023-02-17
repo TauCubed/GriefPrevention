@@ -885,6 +885,7 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.AdminsGetSignNotifications", this.config_signNotifications);
 
         outConfig.set("GriefPrevention.VisualizationAntiCheatCompatMode", this.config_visualizationAntiCheatCompat);
+        outConfig.set("GriefPrevention.VisualizationGlowingFallingBlock", this.config_visualizationGlowingFallingBlock);
         outConfig.set("GriefPrevention.SmartBan", this.config_smartBan);
         outConfig.set("GriefPrevention.Mute New Players Using Banned Words", this.config_trollFilterEnabled);
         outConfig.set("GriefPrevention.MaxPlayersPerIpAddress", this.config_ipLimit);

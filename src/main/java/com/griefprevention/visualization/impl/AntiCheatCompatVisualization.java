@@ -27,7 +27,7 @@ public class AntiCheatCompatVisualization extends FakeBlockVisualization
     }
 
     @Override
-    protected boolean isTransparent(@NotNull Block block)
+    public boolean isValidFloor(Block block)
     {
         Collection<BoundingBox> boundingBoxes = block.getCollisionShape().getBoundingBoxes();
         // Decide transparency based on whether block physical bounding box occupies the entire block volume.
