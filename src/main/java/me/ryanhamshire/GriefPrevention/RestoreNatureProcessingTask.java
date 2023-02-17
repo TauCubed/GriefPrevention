@@ -737,7 +737,6 @@ class RestoreNatureProcessingTask implements Runnable
         playerBlocks.add(Material.MELON_STEM);
         playerBlocks.add(Material.ENCHANTING_TABLE);
         playerBlocks.add(Material.COBWEB);
-        playerBlocks.add(Material.GRAVEL);
         playerBlocks.add(Material.SANDSTONE);
         playerBlocks.add(Material.ENDER_CHEST);
         playerBlocks.add(Material.COMMAND_BLOCK);
