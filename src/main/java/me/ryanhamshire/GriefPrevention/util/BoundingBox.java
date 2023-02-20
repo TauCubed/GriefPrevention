@@ -3,6 +3,7 @@ package me.ryanhamshire.GriefPrevention.util;
 import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.Claim;
 import org.bukkit.Location;
+import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.util.NumberConversions;
@@ -48,6 +49,18 @@ public class BoundingBox implements Cloneable
             box.union(block.getX(), block.getY(), block.getZ());
         }
 
+        return box;
+    }
+
+    public static @NotNull BoundingBox of(WorldBorder border, int minY, int maxY) {
+        // make sure the bounding box is no larger than the border.
+        int radius = (int) Math.floor(border.getSize() / 2);
+        Location a = border.getCenter();
+        a.setY(minY);
+        Location b = border.getCenter();
+        b.setY(maxY);
+        BoundingBox box = new BoundingBox(a, b);
+        box.expand(radius, 0, radius, radius, 0, radius);
         return box;
     }
 
@@ -432,6 +445,21 @@ public class BoundingBox implements Cloneable
     }
 
     /**
+     * Expand this bounding box by the given values.<br>
+     * This will make no effort to check if the values cause the bounding box to "flip" (min will become max)
+     * @return this bounding box
+     */
+    public BoundingBox expand(int negativeX, int negativeY, int negativeZ, int positiveX, int positiveY, int positiveZ) {
+        int newMinX = this.minX - negativeX;
+        int newMinY = this.minY - negativeY;
+        int newMinZ = this.minZ - negativeZ;
+        int newMaxX = this.maxX + positiveX;
+        int newMaxY = this.maxY + positiveY;
+        int newMaxZ = this.maxZ + positiveZ;
+        return this.resize(newMinX, newMinY, newMinZ, newMaxX, newMaxY, newMaxZ);
+    }
+
+    /**
      * Changes the size the bounding box in the direction specified by the Minecraft blockface.
      *
      * <p>If the specified directional magnitude is negative, the box is contracted instead.
@@ -475,6 +503,20 @@ public class BoundingBox implements Cloneable
     }
 
     /**
+     * Resizes this bounding box to the specified values
+     * @return this bounding box
+     */
+    public BoundingBox resize(int x1, int y1, int z1, int x2, int y2, int z2) {
+        this.minX = Math.min(x1, x2);
+        this.minY = Math.min(y1, y2);
+        this.minZ = Math.min(z1, z2);
+        this.maxX = Math.max(x1, x2);
+        this.maxY = Math.max(y1, y2);
+        this.maxZ = Math.max(z1, z2);
+        return this;
+    }
+
+    /**
      * Moves the bounding box in the direction specified by the Minecraft BlockFace and magnitude.
      *
      * <p>Note that a negative direction will move in the opposite direction
@@ -507,6 +549,15 @@ public class BoundingBox implements Cloneable
         int blockZ = NumberConversions.round(vector.getZ());
         this.minZ += blockZ;
         this.maxZ += blockZ;
+    }
+
+    /**
+     * Moves this bounding box by the given amounts
+     * @return this bounding box
+     */
+    public BoundingBox move(int x, int y, int z) {
+        return this.resize(this.minX + x, this.minY + y, this.minZ + z,
+                this.maxX + x, this.maxY + y, this.maxZ + z);
     }
 
     /**
