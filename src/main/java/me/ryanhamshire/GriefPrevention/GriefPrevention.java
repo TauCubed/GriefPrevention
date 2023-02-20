@@ -2721,13 +2721,6 @@ public class GriefPrevention extends JavaPlugin
             SaveTrappedPlayerEvent event = new SaveTrappedPlayerEvent(claim);
             Bukkit.getPluginManager().callEvent(event);
 
-            //if the player is in the nether or end, he's screwed (there's no way to programmatically find a safe place for him)
-            if (player.getWorld().getEnvironment() != Environment.NORMAL && event.getDestination() == null)
-            {
-                GriefPrevention.sendMessage(player, TextMode.Err, Messages.TrappedWontWorkHere);
-                return true;
-            }
-
             //if the player is in an administrative claim and AllowTrappedInAdminClaims is false, he should contact an admin
             if (!GriefPrevention.instance.config_claims_allowTrappedInAdminClaims && claim.isAdminClaim() && event.getDestination() == null)
             {
