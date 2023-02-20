@@ -3644,7 +3644,7 @@ public class GriefPrevention extends JavaPlugin
         Claim claim = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null);
         int attempts = 0;
         while (claim != null && claim.checkBanned(who) || !candidateLocation.getBlock().getRelative(0, -2, 0).getType().isOccluding()) {
-            Block highest = candidateLocation.getWorld().getHighestBlockAt((claim == null ? candidateLocation : claim.getGreaterBoundaryCorner()).clone().add(-1, 0, -1));
+            Block highest = candidateLocation.getWorld().getHighestBlockAt((claim == null ? candidateLocation : claim.getLesserBoundaryCorner()).clone().add(-1, 0, -1));
             while (!highest.getType().isOccluding()) {
                 if (attempts > 64) {
                     candidateLocation = who.getBedSpawnLocation();
