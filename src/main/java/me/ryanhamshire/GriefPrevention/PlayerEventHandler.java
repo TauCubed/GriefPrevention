@@ -2404,7 +2404,7 @@ class PlayerEventHandler implements Listener
                             }
 
                             // can't create 2d subdivisions in 3d parent clams
-                            if (playerData.shovelMode != ShovelMode._3d && claim.is3D()) {
+                            if (playerData.shovelMode != ShovelMode.Subdivide3d && claim.is3D()) {
                                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.Create2DSubdivisionFail3DClaim);
                                 BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
                                 return;
