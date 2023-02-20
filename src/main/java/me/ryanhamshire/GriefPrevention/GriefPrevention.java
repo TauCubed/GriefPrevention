@@ -1775,6 +1775,7 @@ public class GriefPrevention extends JavaPlugin
                 UUID ownerId = claim.parent == null ? claim.ownerID : claim.parent.ownerID;
                 if (ownerId != null) sb.append("  Owner UUID: %s\n".formatted(ownerId));
                 sb.append("  Owner Name: %s\n".formatted(ownerId == null ? "<Administrator>" : lookupPlayerName(ownerId)));
+                sb.append("  World: %s\n".formatted(claim.getWorld().getName()));
                 sb.append("  Lesser Corner: X=%d, Y=%d, Z=%d\n".formatted(lesser.getBlockX(), lesser.getBlockY(), lesser.getBlockZ()));
                 sb.append("  Greater Corner: X=%d, Y=%d, Z=%d\n".formatted(greater.getBlockX(), greater.getBlockY(), greater.getBlockZ()));
                 sb.append("  Claim Explosions: %b\n".formatted(claim.areExplosivesAllowed));
