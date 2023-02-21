@@ -13,8 +13,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerEvent;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 
 /**
  * An {@link org.bukkit.event.Event Event} called when a {@link Player} receives {@link Boundary} visuals.
@@ -68,7 +68,7 @@ public class BoundaryVisualizationEvent extends PlayerEvent
             @NotNull VisualizationProvider provider
     ) {
         super(player);
-        this.boundaries = new ArrayList<>(boundaries);
+        this.boundaries = new HashSet<>(boundaries);
         this.height = height;
         this.provider = provider;
     }

@@ -67,7 +67,8 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
     }
 
     @Override
-    protected void draw(@NotNull Player player, @NotNull Boundary boundary) {
+    protected void draw(@NotNull Player player, @NotNull Boundary boundary)
+    {
         BoundingBox area = boundary.bounds();
 
         // Trim to area - allows for simplified display containment check later.
@@ -246,7 +247,7 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
      * @param maxY the maximum Y value that will be searched
      * @param def the default return value if no floor is found
      * @return the Y coordinate of the floor or def if no floor is found
-     * @see #isValidFloor(World, int, int, int, int) 
+     * @see #isValidFloor(World, int, int, int, int)
      * @see #isValidFloor(Block)
      */
     public int findFloor(World world, int x, int y, int z, int minY, int maxY, int def) {
@@ -283,7 +284,7 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
      * @param block the block to check
      * @return true if the block is considered a valid floor, false otherwise
      * @see #isValidFloor(World, int, int, int, int)
-     * @see #findFloor(World, int, int, int, int, int, int) 
+     * @see #findFloor(World, int, int, int, int, int, int)
      */
     public boolean isValidFloor(Block block) {
         return true;
