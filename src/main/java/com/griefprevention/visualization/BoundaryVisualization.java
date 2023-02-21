@@ -269,14 +269,20 @@ public abstract class BoundaryVisualization
         Bukkit.getPluginManager().callEvent(event);
 
         Player player = event.getPlayer();
-        BoundaryVisualization visualization = event.getProvider().create(player.getWorld(), event.getCenter(), event.getHeight());
-        for (Boundary boundary : event.getBoundaries()) {
-            if (boundary != null) {
-                visualization.boundaries.add(boundary);
-            }
+        PlayerData playerData = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
+        BoundaryVisualization currentVisualization = playerData.getVisibleBoundaries();
+
+        Collection<Boundary> boundaries = event.getBoundaries();
+        boundaries.removeIf(Objects::isNull);
+
+        if (currentVisualization != null && currentVisualization.elements.equals(boundaries))
+        {
+            // Ignore visualization with duplicate boundaries.
+            return;
         }
 
-        PlayerData playerData = GriefPrevention.instance.dataStore.getPlayerData(player.getUniqueId());
+        BoundaryVisualization visualization = event.getProvider().create(player.getWorld(), event.getCenter(), event.getHeight());
+        visualization.boundaries.addAll(boundaries);
 
         // If they have a visualization active, clear it first.
         playerData.setVisibleBoundaries(null);
