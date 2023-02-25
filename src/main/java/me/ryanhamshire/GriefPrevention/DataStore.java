@@ -23,7 +23,6 @@ import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.events.*;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import me.ryanhamshire.GriefPrevention.util.FileUtils;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -112,19 +111,19 @@ public abstract class DataStore
         this.updateSchemaVersionInStorage(versionToSet);
     }
 
+    public boolean backupClaimData(File to) throws IOException { return false; }
+
     //initialization!
     void initialize() throws Exception {
         // convert 2d claims to their new Claim._2D_Height
         {
             File schema3DCheck = new File(dataLayerFolderPath, "_schema3DClaimsConverted");
-            File claimData = new File(dataLayerFolderPath, "ClaimData");
-            if (!schema3DCheck.isFile() && claimData.isDirectory()) {
+            if (!schema3DCheck.isFile()) {
                 GriefPrevention.AddLogEntry("Converting claims to new 3D height format...");
                 try {
                     // make a backup of the claim data first with a self-explanatory name
                     File backupClaimData = new File(dataLayerFolderPath, "ClaimData.backupPre3DConversion");
-                    FileUtils.copyRecursive(claimData.toPath(), backupClaimData.toPath());
-                    GriefPrevention.AddLogEntry("ClaimData backup written to: " + backupClaimData.getPath());
+                    if (backupClaimData(backupClaimData)) GriefPrevention.AddLogEntry("ClaimData backup written to: " + backupClaimData.getPath());
                     schema3DCheck.createNewFile();
                 } catch (IOException e) {
                     if (schema3DCheck.isFile()) schema3DCheck.delete();
