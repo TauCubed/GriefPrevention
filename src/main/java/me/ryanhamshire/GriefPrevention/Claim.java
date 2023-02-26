@@ -574,10 +574,11 @@ public class Claim
         }
 
         // Permission inheritance for subdivisions.
-        if (this.parent != null)
-        {
-            if (!inheritNothing)
-                return this.parent.getDefaultDenial(player, uuid, permission, event);
+        if (this.parent != null && !inheritNothing) {
+            ClaimPermission parentPerm = permission;
+            // if permissiontrusted in parent claim allow edits
+            if (parentPerm == ClaimPermission.Edit) parentPerm = ClaimPermission.Manage;
+            return this.parent.getDefaultDenial(player, uuid, parentPerm, event);
         }
 
         // Catch-all error message for all other cases.
