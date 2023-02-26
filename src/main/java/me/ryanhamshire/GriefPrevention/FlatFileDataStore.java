@@ -19,6 +19,7 @@
 package me.ryanhamshire.GriefPrevention;
 
 import com.google.common.io.Files;
+import me.ryanhamshire.GriefPrevention.util.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -201,6 +202,13 @@ public class FlatFileDataStore extends DataStore
         }
 
         super.initialize();
+    }
+
+    @Override
+    public boolean backupClaimData(File to) throws IOException {
+        File claimData = new File(dataLayerFolderPath, "ClaimData");
+        FileUtils.copyRecursive(claimData.toPath(), to.toPath());
+        return true;
     }
 
     void loadClaimData_Legacy(File[] files) throws Exception
