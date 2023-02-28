@@ -150,7 +150,7 @@ public abstract class BoundaryVisualization
             @NotNull VisualizationType type) {
         BoundaryVisualizationEvent event = new BoundaryVisualizationEvent(player,
                 Set.of(new Boundary(boundingBox, type)),
-                player.getEyeLocation().getBlockY());
+                player.getLocation().getBlockY() - 1);
         callAndVisualize(event);
     }
 
@@ -166,7 +166,7 @@ public abstract class BoundaryVisualization
             @NotNull Claim claim,
             @NotNull VisualizationType type)
     {
-        visualizeClaim(player, claim, type, player.getEyeLocation().getBlockY());
+        visualizeClaim(player, claim, type, player.getLocation().getBlockY() - 1);
     }
 
     /**
@@ -183,7 +183,7 @@ public abstract class BoundaryVisualization
             @NotNull VisualizationType type,
             @NotNull Block block)
     {
-        visualizeClaim(player, claim, type, player.getEyeLocation().getBlockY());
+        visualizeClaim(player, claim, type, player.getLocation().getBlockY() - 1);
     }
 
     /**
