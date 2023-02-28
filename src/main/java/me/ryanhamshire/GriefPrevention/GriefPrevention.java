@@ -28,6 +28,7 @@ import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.metrics.MetricsHandler;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
+import me.ryanhamshire.GriefPrevention.util.SafeTeleports;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
 import org.bukkit.BanList.Type;
@@ -3641,28 +3642,47 @@ public class GriefPrevention extends JavaPlugin
     }
 
     public static Location ejectionLocationForClaimban(Player who, Location candidateLocation) {
-        candidateLocation = candidateLocation.getWorld().getHighestBlockAt(candidateLocation.getBlock().getLocation()).getLocation().add(-1, 2, -1);
-        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null);
-        int attempts = 0;
-        while (claim != null && claim.checkBanned(who) || !candidateLocation.getBlock().getRelative(0, -2, 0).getType().isOccluding()) {
-            Block highest = candidateLocation.getWorld().getHighestBlockAt((claim == null ? candidateLocation : claim.getLesserBoundaryCorner()).clone().add(-1, 0, -1));
-            while (!highest.getType().isOccluding()) {
-                if (attempts > 64) {
-                    candidateLocation = who.getBedSpawnLocation();
-                    if (candidateLocation == null ||
-                            (claim = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null)) != null && claim.checkBanned(who)) {
-                        candidateLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
+        Claim[] checkClaim = new Claim[] {GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null)};
+
+        if (checkClaim[0] != null && checkClaim[0].checkBanned(who)) {
+            int minY = candidateLocation.getWorld().getMinHeight();
+            int maxY = candidateLocation.getWorld().getMaxHeight();
+            BoundingBox ofClaim = checkClaim[0].getBounds().clone().setY(minY, maxY);
+            candidateLocation = SafeTeleports.findSafeLocationAround(
+                    candidateLocation.getWorld(),
+                    who.getBoundingBox(),
+                    ofClaim,
+                    minY,
+                    // only let a player teleport on top of the nether roof if they are already above it
+                    candidateLocation.getWorld().getEnvironment() == World.Environment.NETHER && who.getLocation().getBlockY() < 128 ? 126 : maxY,
+                    1_000_000,
+                    block -> {
+                       checkClaim[0] = GriefPrevention.instance.dataStore.getClaimAt(block.getLocation(), false, false, checkClaim[0]);
+                       return checkClaim[0] == null || !checkClaim[0].checkBanned(who);
+                    });
+            if (candidateLocation == null) {
+                candidateLocation = who.getBedSpawnLocation();
+                if (candidateLocation != null) {
+                    checkClaim[0] = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null);
+                    if (checkClaim[0] == null || !checkClaim[0].checkBanned(who)) {
+                        return candidateLocation.getBlock().getLocation().add(0.5, 0, 0.5);
                     }
-                    return candidateLocation.add(0.5, 0, 0.5);
                 }
-                highest = highest.getWorld().getHighestBlockAt(highest.getX() - 1, highest.getZ() - 1);
-                attempts++;
+                candidateLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
+                candidateLocation = SafeTeleports.findNearestSafeLocation(
+                        Bukkit.getWorlds().get(0).getSpawnLocation(),
+                        who.getBoundingBox(),
+                        32,
+                        candidateLocation.getWorld().getMinHeight(),
+                        candidateLocation.getWorld().getMaxHeight(),
+                        b -> true);
+                return candidateLocation == null ? Bukkit.getWorlds().get(0).getSpawnLocation() : candidateLocation;
+            } else {
+                return candidateLocation;
             }
-            candidateLocation = highest.getLocation().add(0, 2, 0);
-            claim = GriefPrevention.instance.dataStore.getClaimAt(candidateLocation, false, false, null);
+        } else {
+            return candidateLocation;
         }
-        if (!candidateLocation.getWorld().getWorldBorder().isInside(candidateLocation)) candidateLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
-        return candidateLocation.clone().add(0.5, 0, 0.5);
     }
 
     //ensures a piece of the managed world is loaded into server memory
