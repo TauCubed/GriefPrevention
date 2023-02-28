@@ -402,9 +402,9 @@ public class BoundingBox implements Cloneable
      *
      * @return the area of the base of the bounding box
      */
-    public int getArea()
+    public long getArea()
     {
-        return this.getLength() * this.getWidth();
+        return (long) this.getLength() * this.getWidth();
     }
 
     /**
@@ -412,7 +412,7 @@ public class BoundingBox implements Cloneable
      *
      * @return the volume of the bounding box
      */
-    public int getVolume()
+    public long getVolume()
     {
         return this.getArea() * getHeight();
     }
