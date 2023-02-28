@@ -234,7 +234,7 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
      * @see #isValidFloor(World, int, int, int, int)
      */
     public int findFloor(int x, int y, int z) {
-        return findFloor(world, x, y, z, Math.max(worldMinHeight, y - 64), Math.min(worldMaxHeight, y + 16), y - 2);
+        return findFloor(world, x, y, z, Math.max(worldMinHeight, y - 96), Math.min(worldMaxHeight, y + 16), y - 2);
     }
 
     /**
