@@ -84,7 +84,7 @@ class PlayerRescueTask implements Runnable
                         world.getMinHeight(),
                         // only let a player teleport on top of the nether roof if they are already above it
                         world.getEnvironment() == World.Environment.NETHER && player.getLocation().getBlockY() < 128 ? 126 : world.getMaxHeight(),
-                        ofClaim.getVolume() + 10_000_000,
+                        10_000_000L,
                         PlayerRescueTask::isUnclaimed);
             } else {
                 this.destination = findNearestSafeLocation(player, player.getLocation(), player.getWorld(), false);

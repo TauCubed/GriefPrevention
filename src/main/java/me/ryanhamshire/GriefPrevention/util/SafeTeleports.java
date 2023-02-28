@@ -94,12 +94,11 @@ public class SafeTeleports {
      * @param around the bounding box to search around
      * @param maxHeight the maximum height to search
      * @param minHeight the minimum height to search
-     * @param maxVolume the maximum volume to search
+     * @param maxCheckedBlocks the maximum number of blocks check
      * @param predicate the predicate for additional filtering
      * @return the location, or null if no safe location is found
      */
-    public static Location findSafeLocationAround(World world, BoundingBox box, me.ryanhamshire.GriefPrevention.util.BoundingBox around, int minHeight, int maxHeight, int maxVolume, Predicate<Block> predicate) {
-        around = around.clone();
+    public static Location findSafeLocationAround(World world, BoundingBox box, me.ryanhamshire.GriefPrevention.util.BoundingBox around, int minHeight, int maxHeight, long maxCheckedBlocks, Predicate<Block> predicate) {
         // one bounding box for each face of the "around" box. we will shift these boxes and expand them by one each interaction
         // this will effectively create a pyramid coming out of each face of the "around" box.
         // this is much more efficient than checking if each block is inside-of the "around" box, as the "around" box could be quite large.
@@ -116,7 +115,8 @@ public class SafeTeleports {
 
         // teleporting players outside the WorldBorder is rude.
         me.ryanhamshire.GriefPrevention.util.BoundingBox borderBox = me.ryanhamshire.GriefPrevention.util.BoundingBox.of(world.getWorldBorder(), minHeight, maxHeight);
-        while (true) {
+        long[] checkedBlocks = new long[] {0L};
+        do {
             lx.move(-1, 0, 0);
             if (ly != null) ly.move(0, -1, 0);
             lz.move(0, 0, -1);
@@ -137,37 +137,22 @@ public class SafeTeleports {
             if (ly != null && ly.getMinY() < minHeight) ly = null;
             if (gy != null && gy.getMaxY() > maxHeight) gy = null;
 
-            around.union(lx);
-            if (ly != null) around.union(ly);
-            around.union(lz);
-
-            around.union(gx);
-            if (gy != null) around.union(gy);
-            around.union(gz);
-
-            // if max volume is reached break, else if ly has reached minY and gy has reached maxY
-            // and the worldborder doesn't contain any of the values, break.
-            if (around.getVolume() > maxVolume || ly == null && gy == null
-                    && !borderBox.contains(lx)
-                    && !borderBox.contains(lz)
-                    && !borderBox.contains(gx)
-                    && !borderBox.contains(gz)) break;
-
             Block block;
-            if ((block = checkAABB(world, lx, borderBox, predicate)) != null
-                    || ly != null && (block = checkAABB(world, ly, borderBox, predicate)) != null
-                    || (block = checkAABB(world, lz, borderBox, predicate)) != null
-                    || (block = checkAABB(world, gx, borderBox, predicate)) != null
-                    || gy != null && (block = checkAABB(world, gy, borderBox, predicate)) != null
-                    || (block = checkAABB(world, gz, borderBox, predicate)) != null) {
+            if ((block = checkAABB(world, lx, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null
+                    || ly != null && (block = checkAABB(world, ly, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null
+                    || (block = checkAABB(world, lz, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null
+                    || (block = checkAABB(world, gx, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null
+                    || gy != null && (block = checkAABB(world, gy, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null
+                    || (block = checkAABB(world, gz, borderBox, checkedBlocks, maxCheckedBlocks, predicate)) != null) {
                 return resolveTopBlockTpLocation(block, box);
             }
-        }
+
+        } while (checkedBlocks[0] <= maxCheckedBlocks);
 
         return null;
     }
 
-    private static Block checkAABB(World world, me.ryanhamshire.GriefPrevention.util.BoundingBox check, me.ryanhamshire.GriefPrevention.util.BoundingBox border, Predicate<Block> predicate) {
+    private static Block checkAABB(World world, me.ryanhamshire.GriefPrevention.util.BoundingBox check, me.ryanhamshire.GriefPrevention.util.BoundingBox border, long[] checkedBlocks, long maxCheckedBlocks, Predicate<Block> predicate) {
         // make sure the first time this runs that cx and cz are not == x >> 4 and z >> 4
         int cx = check.getMinX() + 1, cz = check.getMinZ() + 1;
         for (int x = check.getMinX(); x <= check.getMaxX() && x >= border.getMinX() && x <= border.getMaxX(); x++) {
@@ -176,6 +161,7 @@ public class SafeTeleports {
                 if ((cx == x >> 4 && cz == z >> 4) || world.isChunkLoaded((cx = x >> 4), (cz = z >> 4))) {
                     // search from maxY down
                     for (int y = check.getMaxY(); y >= check.getMinY() && y >= border.getMinY() && y <= border.getMaxY(); y--) {
+                        if (++checkedBlocks[0] > maxCheckedBlocks) return null;
                         Block test = isGoodOrNull(world.getBlockAt(x, y, z), predicate);
                         if (test != null) {
                             return test;
