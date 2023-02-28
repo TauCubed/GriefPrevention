@@ -1731,7 +1731,7 @@ public class GriefPrevention extends JavaPlugin
                                 c.dropPermission(targetId.toString());
                                 dataStore.saveClaim(c);
                                 if (targetPlayer != null && c.contains(targetPlayer.getLocation(), false, false)) {
-                                    ejectPlayer(targetPlayer);
+                                    ejectPlayerFromBannedClaim(targetPlayer);
                                     GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
                                 }
                             }
@@ -1755,7 +1755,7 @@ public class GriefPrevention extends JavaPlugin
                             claim.dropPermission(targetId.toString());
                             dataStore.saveClaim(claim);
                             if (targetPlayer != null && !dataStore.getPlayerData(targetId).ignoreClaims && claim.contains(targetPlayer.getLocation(), false, false)) {
-                                ejectPlayer(targetPlayer);
+                                ejectPlayerFromBannedClaim(targetPlayer);
                                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
                             }
                         }
