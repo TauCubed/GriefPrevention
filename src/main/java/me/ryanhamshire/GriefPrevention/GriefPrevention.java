@@ -2209,6 +2209,16 @@ public class GriefPrevention extends JavaPlugin
             return true;
         }
 
+        // 3dadminclaims
+        else if (cmd.getName().equalsIgnoreCase("3dadminclaims") && player != null)
+        {
+            PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
+            playerData.shovelMode = ShovelMode.Admin3d;
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages._3DAdminClaimsMode);
+
+            return true;
+        }
+
         //basicclaims
         else if (cmd.getName().equalsIgnoreCase("basicclaims") && player != null)
         {
@@ -2221,10 +2231,10 @@ public class GriefPrevention extends JavaPlugin
         }
 
         //3dclaims
-        else if (cmd.getName().equalsIgnoreCase("3dclaims") && player != null)
+        else if (cmd.getName().equalsIgnoreCase("3dclaim") && player != null)
         {
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            playerData.shovelMode = ShovelMode._3d;
+            playerData.shovelMode = playerData.shovelMode == ShovelMode.Admin ? ShovelMode.Admin3d : ShovelMode._3d;
             playerData.claimSubdividing = null;
             GriefPrevention.sendMessage(player, TextMode.Success, Messages._3DClaimsMode);
 
@@ -2243,13 +2253,13 @@ public class GriefPrevention extends JavaPlugin
             return true;
         }
 
-        //subdivideclaims
-        else if (cmd.getName().equalsIgnoreCase("subdivideclaims3d") && player != null)
+        //3dsubdivideclaims
+        else if (cmd.getName().equalsIgnoreCase("3dsubdivideclaims") && player != null)
         {
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
             playerData.shovelMode = ShovelMode.Subdivide3d;
             playerData.claimSubdividing = null;
-            GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionMode);
+            GriefPrevention.sendMessage(player, TextMode.Instr, Messages._3DSubdivisionMode);
             GriefPrevention.sendMessage(player, TextMode.Instr, Messages.SubdivisionVideo2, DataStore.SUBDIVISION_VIDEO_URL);
 
             return true;

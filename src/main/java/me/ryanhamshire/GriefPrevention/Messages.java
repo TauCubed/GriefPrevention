@@ -266,5 +266,7 @@ public enum Messages
     PistonExploded,
     Create2DSubdivisionFail3DClaim,
     _3DClaimsMode,
-    LocationClaimed;
+    LocationClaimed,
+    _3DSubdivisionMode,
+    _3DAdminClaimsMode,
 }

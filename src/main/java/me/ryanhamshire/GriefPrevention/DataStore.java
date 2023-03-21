@@ -1673,9 +1673,11 @@ public abstract class DataStore
         this.addDefault(defaults, Messages.NotEnoughBlocksForSale, "You don't have that many claim blocks available for sale.", null);
         this.addDefault(defaults, Messages.BlockSaleConfirmation, "Deposited {0} in your account.  You now have {1} available claim blocks.", "0: amount deposited; 1: remaining blocks");
         this.addDefault(defaults, Messages.AdminClaimsMode, "Administrative claims mode active.  Any claims created will be free and editable by other administrators.", null);
+        this.addDefault(defaults, Messages._3DAdminClaimsMode, "3D Administrative claims mode active.  Any claims created will be free and editable by other administrators.", null);
         this.addDefault(defaults, Messages.BasicClaimsMode, "Returned to basic claim creation mode.", null);
         this.addDefault(defaults, Messages._3DClaimsMode, "3D claims mode. Select two opposing corners to create a 3D claim", null);
         this.addDefault(defaults, Messages.SubdivisionMode, "Subdivision mode.  Use your shovel to create subdivisions in your existing claims.  Use /basicclaims to exit.", null);
+        this.addDefault(defaults, Messages._3DSubdivisionMode, "3D Subdivision mode.  Use your shovel to create subdivisions in your existing claims.  Use /basicclaims to exit.", null);
         this.addDefault(defaults, Messages.SubdivisionVideo2, "Click for Subdivision Help: {0}", "0:video URL");
         this.addDefault(defaults, Messages.DeleteClaimMissing, "There's no claim here.", null);
         this.addDefault(defaults, Messages.DeletionSubdivisionWarning, "This claim includes subdivisions.  If you're sure you want to delete it, use /DeleteClaim again.", null);

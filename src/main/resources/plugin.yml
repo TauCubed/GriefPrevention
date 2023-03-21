@@ -110,11 +110,6 @@ commands:
       usage: /DeleteUserClaimsInWorld <world>
       aliases: [deletealluserclaimsinworld, clearuserclaimsinworld, clearalluserclaimsinworld]
       permission: griefprevention.deleteclaimsinworld
-    adminclaims:
-      description: Switches the shovel tool to administrative claims mode.
-      usage: /AdminClaims
-      permission: griefprevention.adminclaims
-      aliases: ac
     restorenature:
       description: Switches the shovel tool to restoration mode.
       usage: /RestoreNature
@@ -135,11 +130,21 @@ commands:
       usage: /BasicClaims
       aliases: bc
       permission: griefprevention.claims
-    3dclaims:
+    3dclaim:
       description: Switches the shovel tool to 3D claim mode, used to make 3d claims.
-      usage: /3dclaims
-      aliases: [3dclaim, claim3d, claims3d]
+      usage: /claim3d
+      aliases: [3dclaims, 3dclaim, claim3d, claims3d]
       permission: griefprevention.claims
+    adminclaims:
+      description: Switches the shovel tool to administrative claims mode.
+      usage: /AdminClaims
+      permission: griefprevention.adminclaims
+      aliases: ac
+    3dadminclaims:
+      description: Switches the shovel tool to administrative 3D claims mode.
+      usage: /AdminClaims3d
+      permission: griefprevention.adminclaims
+      aliases: [3dac, ac3d, adminclaim3d, adminclaims3d]
     extendclaim:
       description: Resizes the land claim you're standing in by pushing or pulling its boundary in the direction you're facing.
       usage: /ExtendClaim <numberOfBlocks>
