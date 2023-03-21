@@ -4,10 +4,9 @@ import com.griefprevention.util.IntVector;
 import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationProvider;
-import com.griefprevention.visualization.impl.AntiCheatCompatVisualization;
-import com.griefprevention.visualization.impl.FakeBlockVisualization;
-import com.griefprevention.visualization.impl.FakeFallingBlockVisualization;
+import com.griefprevention.visualization.VisualizationProviders;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
+import me.ryanhamshire.GriefPrevention.registry.Registries;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerEvent;
@@ -22,15 +21,7 @@ import java.util.HashSet;
 public class BoundaryVisualizationEvent extends PlayerEvent
 {
 
-    public static final VisualizationProvider DEFAULT_PROVIDER = (world, visualizeFrom, height) ->
-    {
-        if (GriefPrevention.instance.config_visualizationGlowingFallingBlock) return new FakeFallingBlockVisualization(world, visualizeFrom, height);
-        if (GriefPrevention.instance.config_visualizationAntiCheatCompat)
-        {
-            return new AntiCheatCompatVisualization(world, visualizeFrom, height);
-        }
-        return new FakeBlockVisualization(world, visualizeFrom, height);
-    };
+    public static final VisualizationProvider DEFAULT_PROVIDER = Registries.VISUALIZATION_PROVIDERS.get(GriefPrevention.instance.config_visualization_provider);
 
     private final @NotNull Collection<Boundary> boundaries;
     private final int height;
@@ -49,7 +40,16 @@ public class BoundaryVisualizationEvent extends PlayerEvent
             @NotNull Collection<Boundary> boundaries,
             int height
     ) {
-        this(player, boundaries, height, DEFAULT_PROVIDER);
+        this(player, boundaries, height, getVisualizationProviderFor(player));
+    }
+
+    public static VisualizationProvider getVisualizationProviderFor(Player player) {
+        String visProvider = GriefPrevention.instance.config_visualization_provider;
+        // bedrock players don't have glowing entities :(
+        if (player.getName().contains(".") && (visProvider.equals(VisualizationProviders.FAKE_FALLING_BLOCK.getKey()) || visProvider.equals(VisualizationProviders.FAKE_SHULKER_BULLET.getKey()))) {
+            visProvider = VisualizationProviders.FAKE_BLOCK.getKey();
+        }
+        return Registries.VISUALIZATION_PROVIDERS.get(visProvider);
     }
 
     /**

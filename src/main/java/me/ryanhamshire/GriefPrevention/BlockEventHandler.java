@@ -854,7 +854,8 @@ public class BlockEventHandler implements Listener
     public void onBlockFromTo(BlockFromToEvent spreadEvent)
     {
         //always allow fluids to flow straight down
-        if (spreadEvent.getFace() == BlockFace.DOWN) return;
+        //comment out because of 3d claims
+        //if (spreadEvent.getFace() == BlockFace.DOWN) return;
 
         //don't track in worlds where claims are not enabled
         if (!GriefPrevention.instance.claimsEnabledForWorld(spreadEvent.getBlock().getWorld())) return;

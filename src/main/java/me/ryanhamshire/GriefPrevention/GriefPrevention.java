@@ -20,6 +20,7 @@ package me.ryanhamshire.GriefPrevention;
 
 import com.google.common.base.Joiner;
 import com.griefprevention.visualization.BoundaryVisualization;
+import com.griefprevention.visualization.VisualizationProviders;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.DataStore.NoTransferException;
 import me.ryanhamshire.GriefPrevention.events.PreventBlockBreakEvent;
@@ -27,6 +28,7 @@ import me.ryanhamshire.GriefPrevention.events.SaveTrappedPlayerEvent;
 import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.metrics.MetricsHandler;
+import me.ryanhamshire.GriefPrevention.registry.Registries;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import me.ryanhamshire.GriefPrevention.util.SafeTeleports;
 import net.milkbowl.vault.economy.Economy;
@@ -187,8 +189,7 @@ public class GriefPrevention extends JavaPlugin
     public boolean config_signNotifications;                        //whether sign content will broadcast to administrators in game
     public ArrayList<String> config_eavesdrop_whisperCommands;        //list of whisper commands to eavesdrop on
 
-    public boolean config_visualizationAntiCheatCompat;              // whether to engage compatibility mode for anti-cheat plugins
-    public boolean config_visualizationGlowingFallingBlock;              // if we should visualize things with glowing falling blocks (overrides antiCheatCompat as it does not use fake blocks)
+    public String config_visualization_provider = VisualizationProviders.FAKE_FALLING_BLOCK.getKey(); // the visualization provider to use
 
     public boolean config_smartBan;                                    //whether to ban accounts which very likely owned by a banned player
 
@@ -230,6 +231,8 @@ public class GriefPrevention extends JavaPlugin
     private String databaseUserName;
     private String databasePassword;
 
+    // plugin support
+    public boolean support_protocollib_enabled;
 
     //how far away to search from a tree trunk for its branch blocks
     public static final int TREE_RADIUS = 5;
@@ -262,6 +265,12 @@ public class GriefPrevention extends JavaPlugin
     {
         instance = this;
         log = instance.getLogger();
+
+        // check support plugins
+        support_protocollib_enabled = Bukkit.getPluginManager().isPluginEnabled("ProtocolLib");
+
+        // touch registries to init
+        Registries.VISUALIZATION_PROVIDERS.getName();
 
         this.loadConfig();
 
@@ -371,7 +380,7 @@ public class GriefPrevention extends JavaPlugin
         pluginManager.registerEvents(economyHandler, this);
 
         //packet listeners
-        if (Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
+        if (support_protocollib_enabled) {
             new PacketListeners().register();
         }
 
@@ -630,12 +639,19 @@ public class GriefPrevention extends JavaPlugin
         String whisperCommandsToMonitor = config.getString("GriefPrevention.WhisperCommands", "/tell;/pm;/r;/whisper;/msg");
         whisperCommandsToMonitor = config.getString("GriefPrevention.Spam.WhisperSlashCommands", whisperCommandsToMonitor);
 
-        this.config_visualizationAntiCheatCompat = config.getBoolean("GriefPrevention.VisualizationAntiCheatCompatMode", false);
-        this.config_visualizationGlowingFallingBlock = config.getBoolean("GriefPrevention.VisualizationGlowingFallingBlock", true);
-        if (this.config_visualizationGlowingFallingBlock && !Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
-            this.config_visualizationGlowingFallingBlock = false;
-            log.warning("Could not enable falling block visualization as the ProtocolLib plugin is missing.");
+        // setup visualizations
+        this.config_visualization_provider = config.getString("GriefPrevention.VisualizationProvider", VisualizationProviders.FAKE_FALLING_BLOCK.getKey());
+
+        if (Registries.VISUALIZATION_PROVIDERS.isRegistered(config_visualization_provider)) {
+            config_visualization_provider = support_protocollib_enabled ? VisualizationProviders.FAKE_FALLING_BLOCK.getKey() : VisualizationProviders.FAKE_BLOCK.getKey();
+            log.warning("Could not find visualization provider \"%s\" defaulting to \"%s\"".formatted(config_visualization_provider, config_visualization_provider));
         }
+
+        if (!support_protocollib_enabled && (config_visualization_provider.equals(VisualizationProviders.FAKE_FALLING_BLOCK.getKey()) || config_visualization_provider.equals(VisualizationProviders.FAKE_SHULKER_BULLET.getKey()))) {
+            log.warning("Could not enable falling block visualization as the ProtocolLib plugin is missing.");
+            config_visualization_provider = VisualizationProviders.FAKE_BLOCK.getKey();
+        }
+
         this.config_smartBan = config.getBoolean("GriefPrevention.SmartBan", true);
         this.config_trollFilterEnabled = config.getBoolean("GriefPrevention.Mute New Players Using Banned Words", true);
         this.config_ipLimit = config.getInt("GriefPrevention.MaxPlayersPerIpAddress", 3);
@@ -889,8 +905,7 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.AdminsGetWhispers", this.config_whisperNotifications);
         outConfig.set("GriefPrevention.AdminsGetSignNotifications", this.config_signNotifications);
 
-        outConfig.set("GriefPrevention.VisualizationAntiCheatCompatMode", this.config_visualizationAntiCheatCompat);
-        outConfig.set("GriefPrevention.VisualizationGlowingFallingBlock", this.config_visualizationGlowingFallingBlock);
+        outConfig.set("GriefPrevention.VisualizationProvider", config_visualization_provider);
         outConfig.set("GriefPrevention.SmartBan", this.config_smartBan);
         outConfig.set("GriefPrevention.Mute New Players Using Banned Words", this.config_trollFilterEnabled);
         outConfig.set("GriefPrevention.MaxPlayersPerIpAddress", this.config_ipLimit);

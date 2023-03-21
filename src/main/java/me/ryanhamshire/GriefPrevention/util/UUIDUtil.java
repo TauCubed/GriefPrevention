@@ -5,11 +5,9 @@ import java.util.UUID;
 
 public class UUIDUtil {
 
-    public static final Random RANDOM = new Random();
-
-    public static UUID fastRandomUUID() {
+    public static UUID fastRandomUUID(Random random) {
         byte[] randomBytes = new byte[16];
-        RANDOM.nextBytes(randomBytes);
+        random.nextBytes(randomBytes);
 
         randomBytes[6]  &= 0x0F;  /* clear version        */
         randomBytes[6]  |= 0x40;  /* set to version 4     */

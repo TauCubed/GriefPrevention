@@ -22,8 +22,8 @@ import me.ryanhamshire.GriefPrevention.tags.GPTags;
 import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
-import com.griefprevention.visualization.impl.FakeFallingBlockElement;
-import com.griefprevention.visualization.impl.FakeFallingBlockVisualization;
+import com.griefprevention.visualization.FakeEntityElement;
+import com.griefprevention.visualization.EntityBlockBoundaryVisualization;
 import me.ryanhamshire.GriefPrevention.events.ClaimInspectionEvent;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.*;
@@ -1701,13 +1701,12 @@ class PlayerEventHandler implements Listener
             return;
         }
 
-        if (instance.config_visualizationGlowingFallingBlock) {
-            if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            if (playerData.getVisibleBoundaries() instanceof FakeFallingBlockVisualization vis && event.getClickedBlock() != null) {
-                FakeFallingBlockElement fe = vis.elementByLocation(event.getClickedBlock().getLocation());
-                if (fe != null) {
-                    fe.erase(player, player.getWorld());
-                }
+        if (playerData == null) playerData = this.dataStore.getPlayerData(player.getUniqueId());
+
+        if (playerData.getVisibleBoundaries() instanceof EntityBlockBoundaryVisualization<?> vis && event.getClickedBlock() != null) {
+            FakeEntityElement element = vis.elementByLocation(event.getClickedBlock().getLocation());
+            if (element != null) {
+                element.erase(player, player.getWorld());
             }
         }
 
