@@ -2546,7 +2546,7 @@ class PlayerEventHandler implements Listener
                 int newClaimWidth = Math.abs(playerData.lastShovelLocation.getBlockX() - clickedBlock.getX()) + 1;
                 int newClaimHeight = Math.abs(playerData.lastShovelLocation.getBlockZ() - clickedBlock.getZ()) + 1;
 
-                if (playerData.shovelMode != ShovelMode.Admin)
+                if (playerData.shovelMode != ShovelMode.Admin && playerData.shovelMode != ShovelMode.Admin3d)
                 {
                     if (newClaimWidth < instance.config_claims_minWidth || newClaimHeight < instance.config_claims_minWidth)
                     {
@@ -2571,7 +2571,7 @@ class PlayerEventHandler implements Listener
                 }
 
                 //if not an administrative claim, verify the player has enough claim blocks for this new claim
-                if (playerData.shovelMode != ShovelMode.Admin)
+                if (playerData.shovelMode != ShovelMode.Admin && playerData.shovelMode != ShovelMode.Admin3d)
                 {
                     int newClaimArea = newClaimWidth * newClaimHeight;
                     int remainingBlocks = playerData.getRemainingClaimBlocks();
@@ -2587,7 +2587,7 @@ class PlayerEventHandler implements Listener
                     playerID = null;
                 }
 
-                boolean is3d = playerData.shovelMode == ShovelMode._3d;
+                boolean is3d = playerData.shovelMode == ShovelMode._3d || playerData.shovelMode == ShovelMode.Admin3d;
 
                 //try to create a new claim
                 CreateClaimResult result = this.dataStore.createClaim(
