@@ -3,6 +3,7 @@ package me.ryanhamshire.GriefPrevention.registry;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.Set;
 
 public class Registry<T> {
 
@@ -40,6 +41,10 @@ public class Registry<T> {
 
     public Collection<T> items() {
         return map.values();
+    }
+
+    public Set<String> keys() {
+        return map.keySet();
     }
 
     public int size() {
