@@ -642,13 +642,14 @@ public class GriefPrevention extends JavaPlugin
         // setup visualizations
         this.config_visualization_provider = config.getString("GriefPrevention.VisualizationProvider", VisualizationProviders.FAKE_FALLING_BLOCK.getKey());
 
-        if (Registries.VISUALIZATION_PROVIDERS.isRegistered(config_visualization_provider)) {
-            config_visualization_provider = support_protocollib_enabled ? VisualizationProviders.FAKE_FALLING_BLOCK.getKey() : VisualizationProviders.FAKE_BLOCK.getKey();
-            log.warning("Could not find visualization provider \"%s\" defaulting to \"%s\"".formatted(config_visualization_provider, config_visualization_provider));
+        if (!Registries.VISUALIZATION_PROVIDERS.isRegistered(config_visualization_provider)) {
+            String def = support_protocollib_enabled ? VisualizationProviders.FAKE_FALLING_BLOCK.getKey() : VisualizationProviders.FAKE_BLOCK.getKey();
+            log.warning("Could not find visualization provider \"%s\" defaulting to \"%s\"".formatted(config_visualization_provider, def));
+            config_visualization_provider = def;
         }
 
         if (!support_protocollib_enabled && (config_visualization_provider.equals(VisualizationProviders.FAKE_FALLING_BLOCK.getKey()) || config_visualization_provider.equals(VisualizationProviders.FAKE_SHULKER_BULLET.getKey()))) {
-            log.warning("Could not enable falling block visualization as the ProtocolLib plugin is missing.");
+            log.warning("Could not enable " + config_visualization_provider + " visualization as the ProtocolLib plugin is missing.");
             config_visualization_provider = VisualizationProviders.FAKE_BLOCK.getKey();
         }
 
