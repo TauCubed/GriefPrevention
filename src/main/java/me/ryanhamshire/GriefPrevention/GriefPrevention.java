@@ -89,6 +89,9 @@ public class GriefPrevention extends JavaPlugin
     PlayerEventHandler playerEventHandler;
     //configuration variables, loaded/saved from a config.yml
 
+    // Packet handler
+    public PacketListeners packetListeners;
+
     //claim mode for each world
     public ConcurrentHashMap<World, ClaimsMode> config_claims_worldModes;
     private boolean config_creativeWorldsExist;                     //note on whether there are any creative mode worlds, to save cpu cycles on a common hash lookup
@@ -386,7 +389,8 @@ public class GriefPrevention extends JavaPlugin
 
         //packet listeners
         if (support_protocollib_enabled) {
-            new PacketListeners().register();
+            packetListeners = new PacketListeners();
+            packetListeners.register();
         }
 
         //cache offline players
@@ -3542,6 +3546,8 @@ public class GriefPrevention extends JavaPlugin
 
     public void onDisable()
     {
+        if (packetListeners != null && packetListeners.isRegistered()) packetListeners.unregister();
+
         //save data for any online players
         @SuppressWarnings("unchecked")
         Collection<Player> players = (Collection<Player>) this.getServer().getOnlinePlayers();
