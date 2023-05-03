@@ -21,6 +21,7 @@ package me.ryanhamshire.GriefPrevention;
 import com.google.common.io.Files;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
+import me.ryanhamshire.GriefPrevention.events.ClaimModifiedEvent;
 import me.ryanhamshire.GriefPrevention.events.*;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.*;
@@ -786,14 +787,16 @@ public abstract class DataStore
     //finds a claim by ID
     public synchronized Claim getClaim(long id)
     {
-        for (Claim claim : this.claims) {
-            if (claim.inDataStore) {
-                if (claim.getID() == id) {
+        for (Claim claim : this.claims)
+        {
+            if (claim.inDataStore)
+            {
+                if (claim.getID() == id)
                     return claim;
-                } else if (claim.children.size() > 0) {
-                    for (Claim child : claim.children) {
-                        if (child.inDataStore && child.getID() == id) return child;
-                    }
+                for (Claim subClaim : claim.children)
+                {
+                    if (subClaim.getID() == id)
+                    return subClaim;
                 }
             }
         }
@@ -1512,7 +1515,7 @@ public abstract class DataStore
         newClaim.bounds = new BoundingBox(newx1, newy1, newz1, newx2, newy2, newz2);
 
         //call event here to check if it has been cancelled
-        ClaimResizeEvent event = new ClaimResizeEvent(oldClaim, newClaim, player);
+        ClaimResizeEvent event = new ClaimModifiedEvent(oldClaim, newClaim, player); // Swap to ClaimResizeEvent when ClaimModifiedEvent is removed
         Bukkit.getPluginManager().callEvent(event);
 
         //return here if event is cancelled
@@ -1634,7 +1637,7 @@ public abstract class DataStore
         }
     }
 
-    private void loadMessages()
+    protected void loadMessages()
     {
         Messages[] messageIDs = Messages.values();
         this.messages = new String[Messages.values().length];
