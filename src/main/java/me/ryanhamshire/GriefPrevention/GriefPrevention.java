@@ -2339,17 +2339,7 @@ public class GriefPrevention extends JavaPlugin
             }
 
             //otherwise, find the specified player
-            OfflinePlayer targetPlayer;
-            try
-            {
-                UUID playerID = UUID.fromString(args[0]);
-                targetPlayer = this.getServer().getOfflinePlayer(playerID);
-
-            }
-            catch (IllegalArgumentException e)
-            {
-                targetPlayer = this.resolvePlayerByName(args[0]);
-            }
+            OfflinePlayer targetPlayer = this.resolvePlayerByName(args[0]);
 
             if (targetPlayer == null)
             {
@@ -2692,7 +2682,9 @@ public class GriefPrevention extends JavaPlugin
 
             //find the specified player
             OfflinePlayer targetPlayer = this.resolvePlayerByName(args[0]);
-            if (targetPlayer == null)
+            if (targetPlayer == null
+                    || !targetPlayer.isOnline() && !targetPlayer.hasPlayedBefore()
+                    || targetPlayer.getName() == null)
             {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.PlayerNotFound2);
                 return true;
@@ -3190,7 +3182,16 @@ public class GriefPrevention extends JavaPlugin
         }
         if (bestMatchID == null)
         {
-            return null;
+            try
+            {
+                // Try to parse UUID from string.
+                bestMatchID = UUID.fromString(name);
+            }
+            catch (IllegalArgumentException ignored)
+            {
+                // Not a valid UUID string either.
+                return null;
+            }
         }
 
         return this.getServer().getOfflinePlayer(bestMatchID);
