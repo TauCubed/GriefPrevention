@@ -10,6 +10,8 @@ import com.griefprevention.visualization.FakeEntityElement;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.PlayerData;
 
+import java.util.logging.Level;
+
 public class PacketListeners {
 
     private final PacketListener useEntityListener;
@@ -30,12 +32,20 @@ public class PacketListeners {
         };
     }
 
+    public boolean isRegistered() {
+        return ProtocolLibrary.getProtocolManager().getPacketListeners().contains(useEntityListener);
+    }
+
     public void register() {
         ProtocolLibrary.getProtocolManager().addPacketListener(useEntityListener);
     }
 
     public void unregister() {
-        ProtocolLibrary.getProtocolManager().removePacketListener(useEntityListener);
+        try {
+            ProtocolLibrary.getProtocolManager().removePacketListener(useEntityListener);
+        } catch (Throwable t) {
+            GriefPrevention.instance.getLogger().log(Level.SEVERE, "Error while unregistering packet listeners", t);
+        }
     }
 
 }
