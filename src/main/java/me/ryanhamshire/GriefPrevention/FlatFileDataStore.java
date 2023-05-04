@@ -25,22 +25,9 @@ import org.bukkit.World;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -529,7 +516,11 @@ public class FlatFileDataStore extends DataStore
 
         for (String s : yaml.getStringList("bannedPlayerIDs")) {
             try {
-                claim.bannedPlayerIds.add(UUID.fromString(s));
+                if ("public".equals(s)) {
+                    claim.publicIsBanned = true;
+                } else {
+                    claim.bannedPlayerIds.add(UUID.fromString(s));
+                }
             } catch (IllegalArgumentException ex) {
                 GriefPrevention.instance.getLogger().log(Level.WARNING, "Failed to deserialize banned player id \"" + s + "\" as it was not a valid UUID for claimID " + claimID, ex);
             }
@@ -572,7 +563,9 @@ public class FlatFileDataStore extends DataStore
 
         yaml.set("inheritNothing", claim.getSubclaimRestrictions());
 
-        yaml.set("bannedPlayerIDs", claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        List<String> bannedPlayersList = new ArrayList<>(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        if (claim.publicIsBanned) bannedPlayersList.add("public");
+        yaml.set("bannedPlayerIDs", bannedPlayersList);
 
         return yaml.saveToString();
     }

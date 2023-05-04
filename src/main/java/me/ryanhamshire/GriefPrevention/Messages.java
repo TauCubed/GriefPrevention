@@ -262,5 +262,6 @@ public enum Messages
     PlayerUnBannedFromClaims,
     PlayerUnBannedFromClaim,
     BanListNoClaim,
-    BanListHeader;
+    BanListHeader,
+    TooManyPlayersClaimBanned;
 }

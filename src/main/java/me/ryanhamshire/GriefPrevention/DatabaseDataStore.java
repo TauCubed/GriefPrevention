@@ -27,13 +27,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 
 //manages data stored in the file system
@@ -352,7 +347,11 @@ public class DatabaseDataStore extends DataStore
                 if (bannedPlayerIDsString != null && !bannedPlayerIDsString.isEmpty()) {
                     for (String s : bannedPlayerIDsString.split(";")) {
                         try {
-                            claim.bannedPlayerIds.add(UUID.fromString(s));
+                            if ("public".equals(s)) {
+                                claim.publicIsBanned = true;
+                            } else {
+                                claim.bannedPlayerIds.add(UUID.fromString(s));
+                            }
                         } catch (IllegalArgumentException ex) {
                             GriefPrevention.instance.getLogger().log(Level.WARNING, "Failed to deserialize banned player id \"" + s + "\" as it was not a valid UUID for claimID " + claimID, ex);
                         }
@@ -457,7 +456,9 @@ public class DatabaseDataStore extends DataStore
         boolean inheritNothing = claim.getSubclaimRestrictions();
         long parentId = claim.parent == null ? -1 : claim.parent.id;
 
-        String bannedPlayers = this.storageStringBuilder(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        List<String> bannedPlayersList = new ArrayList<>(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        if (claim.publicIsBanned) bannedPlayersList.add("public");
+        String bannedPlayers = this.storageStringBuilder(bannedPlayersList);
 
         try (PreparedStatement insertStmt = this.databaseConnection.prepareStatement(SQL_INSERT_CLAIM))
         {

@@ -1829,6 +1829,7 @@ public abstract class DataStore
         this.addDefault(defaults, Messages.PlayerUnBannedFromClaims, "Player has been unbanned from all of your claims.", null);
         this.addDefault(defaults, Messages.BanListNoClaim, "Stand inside the claim you're curious about.", null);
         this.addDefault(defaults, Messages.BanListHeader, "Banned Players:", null);
+        this.addDefault(defaults, Messages.TooManyPlayersClaimBanned, "Too many players banned from claim: {0}", "{0} is the claim location");
 
         //load the config file
         FileConfiguration config = YamlConfiguration.loadConfiguration(new File(messagesFilePath));
