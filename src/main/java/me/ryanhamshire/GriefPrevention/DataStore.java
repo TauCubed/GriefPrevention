@@ -1897,6 +1897,7 @@ public abstract class DataStore
         this.addDefault(defaults, Messages.PlayerUnBannedFromClaims, "Player has been unbanned from all of your claims.", null);
         this.addDefault(defaults, Messages.BanListNoClaim, "Stand inside the claim you're curious about.", null);
         this.addDefault(defaults, Messages.BanListHeader, "Banned Players:", null);
+        this.addDefault(defaults, Messages.TooManyPlayersClaimBanned, "Too many players banned from claim: {0}", "{0} is the claim location");
 
         this.addDefault(defaults, Messages.PistonExploded, "The piston at {0} exploded because it couldn't enter the claim at {1}", "{0} is the xyz of the piston, {1} is the claim location");
 

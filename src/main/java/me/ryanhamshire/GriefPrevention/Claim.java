@@ -93,6 +93,7 @@ public class Claim
 
     //playerIds who have been banned from this claim
     public HashSet<UUID> bannedPlayerIds = new HashSet<>();
+    public boolean publicIsBanned = false;
 
     //information about a siege involving this claim.  null means no siege is impacting this claim
     public SiegeData siegeData = null;
@@ -391,6 +392,12 @@ public class Claim
 
     }
 
+    public boolean hasAnyPermission(@NotNull UUID uuid) {
+        return uuid.equals(this.getOwnerID())
+                || playerIDToClaimPermissionMap.containsKey(uuid.toString())
+                || managers.contains(uuid.toString());
+    }
+
     public boolean hasExplicitPermission(@NotNull UUID uuid, @NotNull ClaimPermission level)
     {
         if (uuid.equals(this.getOwnerID())) return true;
@@ -465,12 +472,47 @@ public class Claim
      * @return true if banned, false otherwise
      */
     public boolean checkBanned(UUID uid) {
-        if (bannedPlayerIds.contains(uid)) {
+        if ((publicIsBanned && GriefPrevention.instance.config_allow_public_claimbans && !hasAnyPermission(uid)) || bannedPlayerIds.contains(uid)) {
             return true;
         } else if (!inheritNothing && parent != null) {
             return parent.checkBanned(uid);
         }
         return false;
+    }
+
+    /**
+     * Bans a UUID from this claim
+     * @param uid the UUID to ban
+     * @return true if the player was not already banned
+     */
+    public boolean banUUID(UUID uid) {
+        return bannedPlayerIds.add(uid);
+    }
+
+    /**
+     * Unbans a UUID from this claim
+     * @param uid the UUID to unban
+     * @return true if the UUID was previously banned
+     */
+    public boolean unbanUUID(UUID uid) {
+        return unbanUUID(uid, false, false);
+    }
+
+    /**
+     * Unbans a UUID from this claim and optionally child claims
+     * @param uid the UUID to unban
+     * @param includeChildren if the UUID should be unbanned from this claim's children
+     * @param includeRestrictedChildren if the UUID should be unbanned from restricted child claims (only applies if includeChildren is true)
+     * @return true if the UUID was previously banned from this claim or optionally any of it's children
+     */
+    public boolean unbanUUID(UUID uid, boolean includeChildren, boolean includeRestrictedChildren) {
+        boolean changed = bannedPlayerIds.remove(uid);
+        if (includeChildren) {
+            for (Claim child : children) {
+                if (includeRestrictedChildren || !child.getSubclaimRestrictions()) changed |= child.bannedPlayerIds.remove(uid);
+            }
+        }
+        return changed;
     }
 
     /**
@@ -701,9 +743,12 @@ public class Claim
 
         if (permissionLevel == null)
             dropPermission(playerID);
-        else if (permissionLevel == ClaimPermission.Manage)
+        else if (permissionLevel == ClaimPermission.Manage) {
             this.managers.add(playerID.toLowerCase());
-        else
+            try {
+                unbanUUID(UUID.fromString(playerID), true, false);
+            } catch (IllegalArgumentException ignored) {}
+        } else
             this.playerIDToClaimPermissionMap.put(playerID.toLowerCase(), permissionLevel);
     }
 

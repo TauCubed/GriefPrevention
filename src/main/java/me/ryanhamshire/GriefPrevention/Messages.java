@@ -263,6 +263,7 @@ public enum Messages
     PlayerUnBannedFromClaim,
     BanListNoClaim,
     BanListHeader,
+    TooManyPlayersClaimBanned,
     PistonExploded,
     Create2DSubdivisionFail3DClaim,
     _3DClaimsMode,

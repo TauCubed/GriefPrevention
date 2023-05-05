@@ -525,7 +525,11 @@ public class FlatFileDataStore extends DataStore
 
         for (String s : yaml.getStringList("bannedPlayerIDs")) {
             try {
-                claim.bannedPlayerIds.add(UUID.fromString(s));
+                if ("public".equals(s)) {
+                    claim.publicIsBanned = true;
+                } else {
+                    claim.bannedPlayerIds.add(UUID.fromString(s));
+                }
             } catch (IllegalArgumentException ex) {
                 GriefPrevention.instance.getLogger().log(Level.WARNING, "Failed to deserialize banned player id \"" + s + "\" as it was not a valid UUID for claimID " + claimID, ex);
             }
@@ -570,7 +574,9 @@ public class FlatFileDataStore extends DataStore
 
         yaml.set("inheritNothing", claim.getSubclaimRestrictions());
 
-        yaml.set("bannedPlayerIDs", claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        List<String> bannedPlayersList = new ArrayList<>(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
+        if (claim.publicIsBanned) bannedPlayersList.add("public");
+        yaml.set("bannedPlayerIDs", bannedPlayersList);
 
         yaml.set("claimExplosions", claim.areExplosivesAllowed);
 
