@@ -366,7 +366,7 @@ public class GriefPrevention extends JavaPlugin
 
         //start recurring check for players in claims they are banned from
         CheckClaimbannedTask task3 = new CheckClaimbannedTask();
-        this.getServer().getScheduler().scheduleSyncRepeatingTask(this, task3, 10, 10);
+        this.getServer().getScheduler().scheduleSyncRepeatingTask(this, task3, 20, 20);
 
         //register for events
         PluginManager pluginManager = this.getServer().getPluginManager();
@@ -1891,7 +1891,7 @@ public class GriefPrevention extends JavaPlugin
                     } else { // player ban
                         if (claim.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims && !player.getUniqueId().equals(claim.ownerID)) {
                             GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(claim));
-                        } else if (!claim.checkBanned(targetId)) {
+                        } else if (!claim.bannedPlayerIds.contains(targetId)) {
                             if (config_max_claimbanned_players >= 0 && claim.bannedPlayerIds.size() >= config_max_claimbanned_players) {
                                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooManyPlayersClaimBanned, getfriendlyLocationString(claim));
                             } else {

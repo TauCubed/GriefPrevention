@@ -392,10 +392,13 @@ public class Claim
 
     }
 
-    public boolean hasAnyPermission(@NotNull UUID uuid) {
-        return uuid.equals(this.getOwnerID())
-                || playerIDToClaimPermissionMap.containsKey(uuid.toString())
-                || managers.contains(uuid.toString());
+    public boolean hasAnyExplicitPermission(@NotNull UUID uuid) {
+        if (uuid.equals(this.getOwnerID())) {
+            return true;
+        } else {
+            String uuidString = uuid.toString();
+            return playerIDToClaimPermissionMap.containsKey(uuidString) || managers.contains(uuidString);
+        }
     }
 
     public boolean hasExplicitPermission(@NotNull UUID uuid, @NotNull ClaimPermission level)
@@ -472,7 +475,7 @@ public class Claim
      * @return true if banned, false otherwise
      */
     public boolean checkBanned(UUID uid) {
-        if ((publicIsBanned && GriefPrevention.instance.config_allow_public_claimbans && !hasAnyPermission(uid)) || bannedPlayerIds.contains(uid)) {
+        if ((publicIsBanned && GriefPrevention.instance.config_allow_public_claimbans && !hasAnyExplicitPermission(uid)) || bannedPlayerIds.contains(uid)) {
             return true;
         } else if (!inheritNothing && parent != null) {
             return parent.checkBanned(uid);
