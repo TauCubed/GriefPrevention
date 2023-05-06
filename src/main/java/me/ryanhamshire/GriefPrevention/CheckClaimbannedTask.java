@@ -14,6 +14,7 @@ public class CheckClaimbannedTask implements Runnable {
                 if (!whoData.ignoreClaims && claim.checkBanned(whoData.playerID)) {
                     p.eject();
                     GriefPrevention.ejectPlayerFromBannedClaim(p);
+                    GriefPrevention.sendMessage(p, TextMode.Err, Messages.BannedFromClaim);
                 }
             }
         }
