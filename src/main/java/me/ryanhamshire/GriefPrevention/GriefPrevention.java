@@ -1889,7 +1889,7 @@ public class GriefPrevention extends JavaPlugin
                         }
                         success = true;
                     } else { // player ban
-                        if (claim.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims && !player.getUniqueId().equals(claim.ownerID)) {
+                        if (claim.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims && !player.getUniqueId().equals(claim.ownerID) || targetId.equals(claim.ownerID)) {
                             GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(claim));
                         } else if (!claim.bannedPlayerIds.contains(targetId)) {
                             if (config_max_claimbanned_players >= 0 && claim.bannedPlayerIds.size() >= config_max_claimbanned_players) {
