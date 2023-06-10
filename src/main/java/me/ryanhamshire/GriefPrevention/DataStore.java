@@ -120,11 +120,13 @@ public abstract class DataStore
         {
             File schema3DCheck = new File(dataLayerFolderPath, "_schema3DClaimsConverted");
             if (!schema3DCheck.isFile()) {
-                GriefPrevention.AddLogEntry("Converting claims to new 3D height format...");
                 try {
-                    // make a backup of the claim data first with a self-explanatory name
-                    File backupClaimData = new File(dataLayerFolderPath, "ClaimData.backupPre3DConversion");
-                    if (backupClaimData(backupClaimData)) GriefPrevention.AddLogEntry("ClaimData backup written to: " + backupClaimData.getPath());
+                    if (claims.size() > 0) {
+                        GriefPrevention.AddLogEntry("Converting claims to new 3D height format...");
+                        // make a backup of the claim data first with a self-explanatory name
+                        File backupClaimData = new File(dataLayerFolderPath, "ClaimData.backupPre3DConversion");
+                        if (backupClaimData(backupClaimData)) GriefPrevention.AddLogEntry("ClaimData backup written to: " + backupClaimData.getPath());
+                    }
                     schema3DCheck.createNewFile();
                 } catch (IOException e) {
                     if (schema3DCheck.isFile()) schema3DCheck.delete();
