@@ -1747,6 +1747,11 @@ public class GriefPrevention extends JavaPlugin
                 return true;
             }
 
+            if (claimAt != null && claimAt.checkPermission(player, ClaimPermission.Manage, null) != null) {
+                GriefPrevention.sendMessage(player, TextMode.Err, Messages.NoPermissionTrust, claimAt.getOwnerName());
+                return true;
+            }
+
             boolean success = false;
             for (Claim claim : claims) {
                 if (claims.size() == 1 || claim.parent == null) { // do not ban from subdivisions when targeting all claims
