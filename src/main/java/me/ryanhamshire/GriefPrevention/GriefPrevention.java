@@ -923,7 +923,9 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.AdminsGetWhispers", this.config_whisperNotifications);
         outConfig.set("GriefPrevention.AdminsGetSignNotifications", this.config_signNotifications);
 
-        outConfig.set("GriefPrevention.VisualizationProvider", config_visualization_provider);
+        if (outConfig.getString("GriefPrevention.VisualizationProvider") == null) {
+            outConfig.set("GriefPrevention.VisualizationProvider", VisualizationProviders.FAKE_FALLING_BLOCK.getKey());
+        }
         outConfig.set("GriefPrevention.SmartBan", this.config_smartBan);
         outConfig.set("GriefPrevention.Mute New Players Using Banned Words", this.config_trollFilterEnabled);
         outConfig.set("GriefPrevention.MaxPlayersPerIpAddress", this.config_ipLimit);
