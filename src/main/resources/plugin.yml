@@ -67,10 +67,10 @@ commands:
       usage: /SubdivideClaims
       aliases: [sc, subdivideclaim]
       permission: griefprevention.claims
-    subdivideclaims3d:
+    3dsubdivideclaims:
       description: Switches the shovel tool to 3D subdivision mode, used to subdivide your claims into 3D subdivisions.
-      usage: /SubdivideClaims3d
-      aliases: [sc3d, subdivideclaim3d]
+      usage: /3dSubdivideClaims
+      aliases: [3dsc, sc3d, subdivideclaim3d, subdivideclaims3d]
       permission: griefprevention.claims
     restrictsubclaim:
       description: Restricts a subclaim, so that it inherits no permissions from the parent claim
@@ -130,10 +130,10 @@ commands:
       usage: /BasicClaims
       aliases: bc
       permission: griefprevention.claims
-    3dclaim:
+    3dclaims:
       description: Switches the shovel tool to 3D claim mode, used to make 3d claims.
-      usage: /claim3d
-      aliases: [3dclaims, 3dclaim, claim3d, claims3d]
+      usage: /3dclaims
+      aliases: [3dclaim, claim3d, claims3d]
       permission: griefprevention.claims
     adminclaims:
       description: Switches the shovel tool to administrative claims mode.
@@ -142,9 +142,9 @@ commands:
       aliases: ac
     3dadminclaims:
       description: Switches the shovel tool to administrative 3D claims mode.
-      usage: /AdminClaims3d
+      usage: /3dAdminClaims
       permission: griefprevention.adminclaims
-      aliases: [3dac, ac3d, adminclaim3d, adminclaims3d]
+      aliases: [adminclaim3d, adminclaims3d]
     extendclaim:
       description: Resizes the land claim you're standing in by pushing or pulling its boundary in the direction you're facing.
       usage: /ExtendClaim <numberOfBlocks>

@@ -2267,7 +2267,7 @@ public class GriefPrevention extends JavaPlugin
         }
 
         //3dclaims
-        else if (cmd.getName().equalsIgnoreCase("3dclaim") && player != null)
+        else if (cmd.getName().equalsIgnoreCase("3dclaims") && player != null)
         {
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
             playerData.shovelMode = ShovelMode._3d;
