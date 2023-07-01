@@ -9,12 +9,14 @@ import me.ryanhamshire.GriefPrevention.util.ProtocolUtil;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.BoundingBox;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -81,6 +83,13 @@ public class FakeFallingBlockElement extends com.griefprevention.visualization.F
         ProtocolLibrary.getProtocolManager().sendServerPacket(player, addEntity);
         ProtocolLibrary.getProtocolManager().sendServerPacket(player, entityMeta);
         ProtocolLibrary.getProtocolManager().sendServerPacket(player, addToTeam);
+    }
+
+    @Override
+    public void erase(@NotNull Player player, @NotNull World world) {
+        if (drawn()) {
+            eraseAllFallingBlocks(player, List.of(this));
+        }
     }
 
     public static boolean shouldInheritBlockData(Block block, BlockData data) {

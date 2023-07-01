@@ -234,20 +234,18 @@ public class BlockEventHandler implements Listener
         //FEATURE: limit fire placement, to prevent PvP-by-fire
 
         //if placed block is fire and pvp is off, apply rules for proximity to other players
-        if (block.getType() == Material.FIRE && !doesAllowFireProximityInWorld(block.getWorld()))
+        if ((block.getType() == Material.FIRE || block.getType() == Material.LAVA) && !doesAllowFireProximityInWorld(block.getWorld()))
         {
             List<Player> players = block.getWorld().getPlayers();
             for (Player otherPlayer : players)
             {
-                // Ignore players in creative or spectator mode to avoid users from checking if someone is spectating near them
-                if (otherPlayer.getGameMode() == GameMode.CREATIVE || otherPlayer.getGameMode() == GameMode.SPECTATOR)
-                {
-                    continue;
-                }
-
                 Location location = otherPlayer.getLocation();
-                if (!otherPlayer.equals(player) && location.distanceSquared(block.getLocation()) < 9 && player.canSee(otherPlayer))
-                {
+                // Ignore players in creative or spectator mode to avoid users from checking if someone is spectating near them
+                if (location.distanceSquared(block.getLocation()) < 9
+                        && otherPlayer.getGameMode() != GameMode.CREATIVE
+                        && otherPlayer.getGameMode() != GameMode.SPECTATOR
+                        && otherPlayer.canSee(player)
+                        && !otherPlayer.equals(player)) {
                     GriefPrevention.sendMessage(player, TextMode.Err, Messages.PlayerTooCloseForFire2);
                     placeEvent.setCancelled(true);
                     return;
