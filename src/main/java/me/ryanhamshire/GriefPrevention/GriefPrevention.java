@@ -216,6 +216,7 @@ public class GriefPrevention extends JavaPlugin
 
     public boolean config_limitTreeGrowth;                          //whether trees should be prevented from growing into a claim from outside
     public PistonMode config_pistonMovement;                            //Setting for piston check options
+    public boolean config_breakPistons;                          // should pistons break when they can't move
     public boolean config_pistonExplosionSound;                     //whether pistons make an explosion sound when they get removed
 
     public boolean config_advanced_fixNegativeClaimblockAmounts;    //whether to attempt to fix negative claim block amounts (some addons cause/assume players can go into negative amounts)
@@ -635,6 +636,8 @@ public class GriefPrevention extends JavaPlugin
         if (config.isBoolean("GriefPrevention.CheckPistonMovement") && !config.getBoolean("GriefPrevention.CheckPistonMovement"))
             this.config_pistonMovement = PistonMode.IGNORED;
 
+        this.config_breakPistons = config.getBoolean("GriefPrevention.BreakPistons", true);
+
         this.config_fireSpreads = config.getBoolean("GriefPrevention.FireSpreads", false);
         this.config_fireDestroys = config.getBoolean("GriefPrevention.FireDestroys", false);
 
@@ -900,6 +903,7 @@ public class GriefPrevention extends JavaPlugin
         outConfig.set("GriefPrevention.LimitSkyTrees", this.config_blockSkyTrees);
         outConfig.set("GriefPrevention.LimitTreeGrowth", this.config_limitTreeGrowth);
         outConfig.set("GriefPrevention.PistonMovement", this.config_pistonMovement.name());
+        outConfig.set("GriefPrevention.BreakPistons", this.config_breakPistons);
         outConfig.set("GriefPrevention.CheckPistonMovement", null);
         outConfig.set("GriefPrevention.LimitPistonsToLandClaims", null);
         outConfig.set("GriefPrevention.PistonExplosionSound", this.config_pistonExplosionSound);
