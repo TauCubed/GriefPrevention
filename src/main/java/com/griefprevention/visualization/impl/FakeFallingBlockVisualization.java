@@ -81,12 +81,12 @@ public class FakeFallingBlockVisualization extends EntityBlockBoundaryVisualizat
 
     @Override
     public boolean isValidFloor(World world, int originalY, int x, int y, int z) {
-        return isFloor(world, originalY, x, y, z, 24);
+        return isFloor(world, originalY, x, y, z);
     }
 
-    public static boolean isFloor(World world, int originalY, int x, int y, int z, int ignoreSurroundsAfterY) {
+    public static boolean isFloor(World world, int originalY, int x, int y, int z) {
         Block block = world.getBlockAt(x, y, z);
-        return isFloorBlock(block) && (Math.abs(originalY - y) > ignoreSurroundsAfterY || (!isFloorBlock(block.getRelative(BlockFace.UP)) || !isFloorBlock(block.getRelative(BlockFace.DOWN))));
+        return isFloorBlock(block) && (!isFloorBlock(block.getRelative(BlockFace.UP)) || !isFloorBlock(block.getRelative(BlockFace.DOWN)));
     }
 
     public static boolean isFloorBlock(Block block) {
