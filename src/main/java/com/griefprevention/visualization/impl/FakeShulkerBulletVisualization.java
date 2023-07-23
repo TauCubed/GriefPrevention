@@ -60,7 +60,7 @@ public class FakeShulkerBulletVisualization extends EntityBlockBoundaryVisualiza
 
     @Override
     public boolean isValidFloor(World world, int originalY, int x, int y, int z) {
-        return FakeFallingBlockVisualization.isFloor(world, originalY, x, y, z, 24);
+        return FakeFallingBlockVisualization.isFloor(world, originalY, x, y, z);
     }
 
     @Override
