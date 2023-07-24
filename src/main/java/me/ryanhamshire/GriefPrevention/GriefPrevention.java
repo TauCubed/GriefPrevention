@@ -54,6 +54,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,6 +91,8 @@ public class GriefPrevention extends JavaPlugin
 
     // Packet handler
     public PacketListeners packetListeners;
+
+    public DecimalFormat claimBlocksFormat = new DecimalFormat();
 
     //claim mode for each world
     public ConcurrentHashMap<World, ClaimsMode> config_claims_worldModes;
@@ -1108,7 +1111,7 @@ public class GriefPrevention extends JavaPlugin
             int remaining = playerData.getRemainingClaimBlocks();
             if (remaining < area)
             {
-                GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimInsufficientBlocks, String.valueOf(area - remaining));
+                GriefPrevention.sendMessage(player, TextMode.Err, Messages.CreateClaimInsufficientBlocks, claimBlocksFormat.format(area - remaining));
                 GriefPrevention.instance.dataStore.tryAdvertiseAdminAlternatives(player);
                 return true;
             }
@@ -1371,7 +1374,7 @@ public class GriefPrevention extends JavaPlugin
 
             //inform the player
             int remainingBlocks = playerData.getRemainingClaimBlocks();
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.SuccessfulAbandon, String.valueOf(remainingBlocks));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.SuccessfulAbandon, claimBlocksFormat.format(remainingBlocks));
 
             //revert any current visualization
             playerData.setVisibleBoundaries(null);
@@ -1755,6 +1758,11 @@ public class GriefPrevention extends JavaPlugin
         }
 
         else if (cmd.getName().equalsIgnoreCase("claiminfo")) {
+            if (!player.hasPermission("griefprevention.claiminfo")) {
+                GriefPrevention.sendMessage(player, TextMode.Err, Messages.NoPermissionForCommand);
+                return true;
+            }
+
             Claim claim = dataStore.getClaimAt(player.getLocation(), false, null);
             String[] tokens = Joiner.on(' ').join(args).split("--?");
             boolean shortInfo = false;
@@ -1809,6 +1817,8 @@ public class GriefPrevention extends JavaPlugin
                 sb.append("  World: %s\n".formatted(claim.getWorld().getName()));
                 sb.append("  Lesser Corner: X=%d, Y=%d, Z=%d\n".formatted(lesser.getBlockX(), lesser.getBlockY(), lesser.getBlockZ()));
                 sb.append("  Greater Corner: X=%d, Y=%d, Z=%d\n".formatted(greater.getBlockX(), greater.getBlockY(), greater.getBlockZ()));
+                sb.append("  Dimensions: %d%sx%d (Claim Blocks: %s)\n"
+                        .formatted(claim.getBounds().getWidth(), claim.is3D() ? "x" + claim.getBounds().getHeight() : "", claim.getBounds().getLength(), claimBlocksFormat.format(claim.getArea())));
                 sb.append("  Claim Explosions: %b\n".formatted(claim.areExplosivesAllowed));
                 if (claim.parent != null) sb.append("  Restricted: %b".formatted(claim.getSubclaimRestrictions()));
                 if (claim.parent == null) {
@@ -1823,6 +1833,7 @@ public class GriefPrevention extends JavaPlugin
                             sb.append("\n    ID: %d\n".formatted(child.id));
                             sb.append("      Lesser Corner: X=%d, Y=%d, Z=%d\n".formatted(lesser.getBlockX(), lesser.getBlockY(), lesser.getBlockZ()));
                             sb.append("      Greater Corner: X=%d, Y=%d, Z=%d\n".formatted(greater.getBlockX(), greater.getBlockY(), greater.getBlockZ()));
+                            sb.append("      Dimensions: %d%sx%d\n".formatted(claim.getBounds().getWidth(), claim.is3D() ? "x" + claim.getBounds().getHeight() : "", claim.getBounds().getLength()));
                             sb.append("      Claim Explosions: %b\n".formatted(child.areExplosivesAllowed));
                             sb.append("      Restricted: %b".formatted(child.getSubclaimRestrictions()));
                         }
@@ -2360,19 +2371,19 @@ public class GriefPrevention extends JavaPlugin
             PlayerData playerData = this.dataStore.getPlayerData(otherPlayer.getUniqueId());
             Vector<Claim> claims = playerData.getClaims();
             GriefPrevention.sendMessage(player, TextMode.Instr, Messages.StartBlockMath,
-                    String.valueOf(playerData.getAccruedClaimBlocks()),
-                    String.valueOf((playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))),
-                    String.valueOf((playerData.getAccruedClaimBlocks() + playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))));
+                    claimBlocksFormat.format(playerData.getAccruedClaimBlocks()),
+                    claimBlocksFormat.format((playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))),
+                    claimBlocksFormat.format((playerData.getAccruedClaimBlocks() + playerData.getBonusClaimBlocks() + this.dataStore.getGroupBonusBlocks(otherPlayer.getUniqueId()))));
             if (claims.size() > 0)
             {
                 GriefPrevention.sendMessage(player, TextMode.Instr, Messages.ClaimsListHeader);
                 for (int i = 0; i < playerData.getClaims().size(); i++)
                 {
                     Claim claim = playerData.getClaims().get(i);
-                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim) + this.dataStore.getMessage(Messages.ContinueBlockMath, String.valueOf(claim.getArea())));
+                    GriefPrevention.sendMessage(player, TextMode.Instr, getfriendlyLocationString(claim) + this.dataStore.getMessage(Messages.ContinueBlockMath, claimBlocksFormat.format(claim.getArea())));
                 }
 
-                GriefPrevention.sendMessage(player, TextMode.Instr, Messages.EndBlockMath, String.valueOf(playerData.getRemainingClaimBlocks()));
+                GriefPrevention.sendMessage(player, TextMode.Instr, Messages.EndBlockMath, claimBlocksFormat.format(playerData.getRemainingClaimBlocks()));
             }
 
             //drop the data we just loaded, if the player isn't online
@@ -2481,7 +2492,7 @@ public class GriefPrevention extends JavaPlugin
                 String permissionIdentifier = args[0].substring(1, args[0].length() - 1);
                 int newTotal = this.dataStore.adjustGroupBonusBlocks(permissionIdentifier, adjustment);
 
-                GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustGroupBlocksSuccess, permissionIdentifier, String.valueOf(adjustment), String.valueOf(newTotal));
+                GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustGroupBlocksSuccess, permissionIdentifier, claimBlocksFormat.format(adjustment), String.valueOf(newTotal));
                 if (player != null)
                     GriefPrevention.AddLogEntry(player.getName() + " adjusted " + permissionIdentifier + "'s bonus claim blocks by " + adjustment + ".");
 
@@ -2502,7 +2513,7 @@ public class GriefPrevention extends JavaPlugin
             playerData.setBonusClaimBlocks(playerData.getBonusClaimBlocks() + adjustment);
             this.dataStore.savePlayerData(targetPlayer.getUniqueId(), playerData);
 
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksSuccess, targetPlayer.getName(), String.valueOf(adjustment), String.valueOf(playerData.getBonusClaimBlocks()));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksSuccess, targetPlayer.getName(), claimBlocksFormat.format(adjustment), String.valueOf(playerData.getBonusClaimBlocks()));
             if (player != null)
                 GriefPrevention.AddLogEntry(player.getName() + " adjusted " + targetPlayer.getName() + "'s bonus claim blocks by " + adjustment + ".", CustomLogEntryTypes.AdminActivity);
 
@@ -2539,7 +2550,7 @@ public class GriefPrevention extends JavaPlugin
                 builder.append(onlinePlayer.getName()).append(' ');
             }
 
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksAllSuccess, String.valueOf(adjustment));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AdjustBlocksAllSuccess, claimBlocksFormat.format(adjustment));
             GriefPrevention.AddLogEntry("Adjusted all " + players.size() + "players' bonus claim blocks by " + adjustment + ".  " + builder.toString(), CustomLogEntryTypes.AdminActivity);
 
             return true;
@@ -3102,7 +3113,7 @@ public class GriefPrevention extends JavaPlugin
 
             //tell the player how many claim blocks he has left
             int remainingBlocks = playerData.getRemainingClaimBlocks();
-            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AbandonSuccess, String.valueOf(remainingBlocks));
+            GriefPrevention.sendMessage(player, TextMode.Success, Messages.AbandonSuccess, claimBlocksFormat.format(remainingBlocks));
 
             //revert any current visualization
             playerData.setVisibleBoundaries(null);

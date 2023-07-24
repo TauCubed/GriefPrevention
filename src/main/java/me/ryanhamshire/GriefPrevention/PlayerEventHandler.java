@@ -2090,7 +2090,7 @@ class PlayerEventHandler implements Listener
 
                     if (player.hasPermission("griefprevention.seeclaimsize"))
                     {
-                        GriefPrevention.sendMessage(player, TextMode.Info, "  " + claim.bounds.getLength() + "x" + claim.bounds.getWidth() + "=" + claim.getArea());
+                        GriefPrevention.sendMessage(player, TextMode.Info, "  " + claim.bounds.getLength() + "x" + claim.bounds.getWidth() + "=" + GriefPrevention.instance.claimBlocksFormat.format(claim.getArea()));
                     }
 
                     //if permission, tell about the player's offline time
