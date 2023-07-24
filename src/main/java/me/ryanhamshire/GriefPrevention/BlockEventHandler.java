@@ -566,8 +566,8 @@ public class BlockEventHandler implements Listener
             Claim claim = this.dataStore.getClaimAt(invadedBlock.getLocation(), false,
                     false, pistonClaim);
             if (claim != null && (pistonClaim == null || !Objects.equals(pistonClaim.getOwnerID(), claim.getOwnerID())
-                    || claim == pistonClaim.parent || pistonClaim != claim && claim.getSubclaimRestrictions()
-            )) {
+                    || claim == pistonClaim.parent || pistonClaim != claim && claim.getSubclaimRestrictions())
+            ) {
                 event.setCancelled(true);
                 detonatePiston(pistonBlock, pistonClaim, claim);
             }
@@ -581,7 +581,7 @@ public class BlockEventHandler implements Listener
         movedBlocks.resize(direction, 1);
 
         // if the pistonClaim contains all the moved blocks, and it has no children, return
-        if (pistonClaim.parent == null && pistonClaim.children.isEmpty() && pistonClaim.getBounds().contains(movedBlocks)) return;
+        if (pistonClaim != null && pistonClaim.parent == null && pistonClaim.children.isEmpty() && pistonClaim.getBounds().contains(movedBlocks)) return;
 
         // Assemble list of potentially intersecting claims from chunks interacted with.
         ArrayList<Claim> intersectable = new ArrayList<>();
