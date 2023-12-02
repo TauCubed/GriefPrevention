@@ -332,7 +332,7 @@ public class Claim
         return supplier != null ? supplier.get() : null;
     }
 
-    private static final Set<Material> PLACEABLE_FARMING_BLOCKS = EnumSet.of(
+    private static final Set<Material> PLACEABLE_FARMING_BLOCKS = Set.of(
             Material.PUMPKIN_STEM,
             Material.WHEAT,
             Material.MELON_STEM,
