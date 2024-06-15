@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 
 //automatically extends a claim downward based on block types detected
-class AutoExtendClaimTask implements Runnable
+public class AutoExtendClaimTask implements Runnable
 {
 
     /**
@@ -19,7 +19,7 @@ class AutoExtendClaimTask implements Runnable
      *
      * @param claim the claim to extend the depth of
      */
-    static void scheduleAsync(Claim claim)
+    public static void scheduleAsync(@NotNull Claim claim)
     {
         if (claim.is3D()) return;
         World world = claim.getWorld();
@@ -134,7 +134,7 @@ class AutoExtendClaimTask implements Runnable
                     if (yTooSmall(y)) return this.minY;
 
                     // Because we found a player block, repeatedly check the next block in the column.
-                    while (isPlayerBlock(chunkSnapshot, x, newY--, z))
+                    while (isPlayerBlock(chunkSnapshot, x, --newY, z))
                     {
                         // If we've hit minimum Y we're done searching.
                         if (yTooSmall(y)) return this.minY;
@@ -171,7 +171,12 @@ class AutoExtendClaimTask implements Runnable
 
     private Set<Material> getBiomePlayerBlocks(Biome biome)
     {
-        return biomePlayerMaterials.computeIfAbsent(biome, newBiome -> RestoreNatureProcessingTask.getPlayerBlocks(this.worldType, newBiome));
+        return biomePlayerMaterials.computeIfAbsent(biome, newBiome ->
+                {
+                    Set<Material> playerBlocks = RestoreNatureProcessingTask.getPlayerBlocks(this.worldType, newBiome);
+                    playerBlocks.removeAll(BlockEventHandler.TRASH_BLOCKS);
+                    return playerBlocks;
+                });
     }
 
     //runs in the main execution thread, where it can safely change claims and save those changes

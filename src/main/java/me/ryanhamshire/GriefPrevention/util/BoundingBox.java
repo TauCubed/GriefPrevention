@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.util.NumberConversions;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +30,7 @@ public class BoundingBox implements Cloneable
 {
 
     /**
-     * Construct a new bounding box containing all of the given blocks.
+     * Construct a new bounding box containing all the given blocks.
      *
      * @param blocks a collection of blocks to construct a bounding box around
      * @return the bounding box
@@ -61,6 +62,31 @@ public class BoundingBox implements Cloneable
         b.setY(maxY);
         BoundingBox box = new BoundingBox(a, b);
         box.expand(radius, 0, radius, radius, 0, radius);
+        return box;
+    }
+
+    /**
+     * Construct a new bounding box containing all the given block states.
+     *
+     * @param blocks a collection of blocks to construct a bounding box around
+     * @return the bounding box
+     */
+    public static @NotNull BoundingBox ofStates(@NotNull Collection<BlockState> blocks)
+    {
+        if (blocks.size() == 0) throw new IllegalArgumentException("Cannot create bounding box with no blocks!");
+
+        Iterator<BlockState> iterator = blocks.iterator();
+        // Initialize bounding box with first block
+        BlockState state = iterator.next();
+        BoundingBox box = new BoundingBox(state.getX(), state.getY(), state.getZ(), state.getX(), state.getY(), state.getZ(), false);
+
+        // Fill in rest of bounding box with remaining blocks.
+        while (iterator.hasNext())
+        {
+            state = iterator.next();
+            box.union(state.getX(), state.getY(), state.getZ());
+        }
+
         return box;
     }
 
