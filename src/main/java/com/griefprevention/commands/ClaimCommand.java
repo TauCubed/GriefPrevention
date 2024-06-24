@@ -2,14 +2,7 @@ package com.griefprevention.commands;
 
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
-import me.ryanhamshire.GriefPrevention.AutoExtendClaimTask;
-import me.ryanhamshire.GriefPrevention.CreateClaimResult;
-import me.ryanhamshire.GriefPrevention.DataStore;
-import me.ryanhamshire.GriefPrevention.GriefPrevention;
-import me.ryanhamshire.GriefPrevention.Messages;
-import me.ryanhamshire.GriefPrevention.PlayerData;
-import me.ryanhamshire.GriefPrevention.ShovelMode;
-import me.ryanhamshire.GriefPrevention.TextMode;
+import me.ryanhamshire.GriefPrevention.*;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -141,7 +134,7 @@ public class ClaimCommand extends CommandHandler
         CreateClaimResult result = plugin.dataStore.createClaim(world,
                 lesser.getBlockX(), greater.getBlockX(),
                 lesser.getBlockY() - plugin.config_claims_claimsExtendIntoGroundDistance - 1,
-                world.getHighestBlockYAt(greater) - plugin.config_claims_claimsExtendIntoGroundDistance - 1,
+                Claim._2D_HEIGHT,
                 lesser.getBlockZ(), greater.getBlockZ(),
                 ownerId, null, null, player);
         if (!result.succeeded || result.claim == null)

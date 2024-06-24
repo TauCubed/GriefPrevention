@@ -2509,8 +2509,6 @@ class PlayerEventHandler implements Listener
     public static Block raytraceForClaimOrTarget(Player player, int maxDistance, BiPredicate<Block, Claim> predicate) throws IllegalStateException {
         return raytraceForTarget(player, maxDistance, new Predicate<Block>() {
             Location loc = player.getLocation();
-            Material eyeMaterial = player.getEyeLocation().getBlock().getType();
-            boolean passThroughWater = (eyeMaterial == Material.WATER);
             int cx = loc.getBlockX() >> 4, cz = loc.getBlockZ() >> 4;
             List<Claim> claimsInChunk = GriefPrevention.instance.dataStore.chunksToClaimsMap.get(DataStore.getChunkHash(cx, cz));
 
@@ -2538,7 +2536,7 @@ class PlayerEventHandler implements Listener
                         }
                     }
 
-                    return !passThroughWater && result.getType() == Material.WATER;
+                    return false;
                 } else {
                     return true;
                 }

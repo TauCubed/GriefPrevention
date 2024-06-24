@@ -333,6 +333,7 @@ public abstract class DataStore
     //removes cached player data from memory
     synchronized void clearCachedPlayerData(UUID playerID)
     {
+        this.lastPlayerData = null;
         this.playerNameToPlayerDataMap.remove(playerID);
     }
 
@@ -596,9 +597,15 @@ public abstract class DataStore
 
     //retrieves player data from memory or secondary storage, as necessary
     //if the player has never been on the server before, this will return a fresh player data with default values
+    private PlayerData lastPlayerData = null;
     synchronized public PlayerData getPlayerData(UUID playerID)
     {
-        //first, look in memory
+        //first, check lastPlayerData
+        if (lastPlayerData != null && playerID.equals(lastPlayerData.playerID)) {
+            return lastPlayerData;
+        }
+
+        //look in memory
         PlayerData playerData = this.playerNameToPlayerDataMap.get(playerID);
 
         //if not there, build a fresh instance with some blanks for what may be in secondary storage

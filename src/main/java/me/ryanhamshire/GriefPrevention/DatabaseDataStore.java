@@ -351,9 +351,9 @@ public class DatabaseDataStore extends DataStore
                     for (String s : bannedPlayerIDsString.split(";")) {
                         try {
                             if ("public".equals(s)) {
-                                claim.publicIsBanned = true;
+                                claim.setPublicBanned(true);
                             } else {
-                                claim.bannedPlayerIds.add(UUID.fromString(s));
+                                claim.banUUID(UUID.fromString(s));
                             }
                         } catch (IllegalArgumentException ex) {
                             GriefPrevention.instance.getLogger().log(Level.WARNING, "Failed to deserialize banned player id \"" + s + "\" as it was not a valid UUID for claimID " + claimID, ex);
@@ -461,8 +461,8 @@ public class DatabaseDataStore extends DataStore
         boolean inheritNothing = claim.getSubclaimRestrictions();
         long parentId = claim.parent == null ? -1 : claim.parent.id;
 
-        List<String> bannedPlayersList = new ArrayList<>(claim.bannedPlayerIds.stream().map(UUID::toString).toList());
-        if (claim.publicIsBanned) bannedPlayersList.add("public");
+        List<String> bannedPlayersList = new ArrayList<>(claim.getBannedPlayers().stream().map(UUID::toString).toList());
+        if (claim.isPublicBanned()) bannedPlayersList.add("public");
         String bannedPlayers = this.storageStringBuilder(bannedPlayersList);
 
         boolean claimExplosions = claim.areExplosivesAllowed;

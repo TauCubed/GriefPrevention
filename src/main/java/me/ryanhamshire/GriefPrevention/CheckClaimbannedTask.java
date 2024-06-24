@@ -10,8 +10,7 @@ public class CheckClaimbannedTask implements Runnable {
         for (Player p : Bukkit.getOnlinePlayers()) {
             Claim claim = GriefPrevention.instance.dataStore.getClaimAt(p.getLocation(), false, null);
             if (claim != null) {
-                PlayerData whoData = GriefPrevention.instance.dataStore.getPlayerData(p.getUniqueId());
-                if (!whoData.ignoreClaims && claim.checkBanned(whoData.playerID)) {
+                if (claim.checkBanned(p.getUniqueId())) {
                     p.eject();
                     GriefPrevention.ejectPlayerFromBannedClaim(p);
                     GriefPrevention.sendMessage(p, TextMode.Err, Messages.BannedFromClaim);

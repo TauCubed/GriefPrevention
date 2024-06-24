@@ -640,6 +640,14 @@ public class BlockEventHandler implements Listener {
             // Ensure claim intersects with block bounding box.
             if (!claimBoundingBox.intersects(boundingBox)) continue;
 
+            // Tau: check subclaims properly
+            for (Claim child : claim.children) {
+                if (child.is3D() && child.getBounds().contains(boundingBox) || child.getBounds().contains2d(boundingBox)) {
+                    claim = child;
+                    break;
+                }
+            }
+
             // Do additional mode-based handling.
             if (precisePredicate.test(claim, claimBoundingBox)) return true;
         }

@@ -90,8 +90,9 @@ public class Claim
     public ArrayList<Claim> children = new ArrayList<>();
 
     //playerIds who have been banned from this claim
-    public HashSet<UUID> bannedPlayerIds = new HashSet<>();
-    public boolean publicIsBanned = false;
+    private HashSet<UUID> bannedPlayerIds = new HashSet<>();
+    private Set<UUID> unmodifiableBannedPlayerIds = Collections.unmodifiableSet(bannedPlayerIds);
+    private boolean publicIsBanned = false;
 
     //following a siege, buttons/levers are unlocked temporarily.  this represents that state
     public boolean doorsOpen = false;
@@ -461,11 +462,37 @@ public class Claim
      */
     public boolean checkBanned(UUID uid) {
         if ((publicIsBanned && GriefPrevention.instance.config_allow_public_claimbans && !hasAnyExplicitPermission(uid)) || bannedPlayerIds.contains(uid)) {
-            return true;
+            return !GriefPrevention.instance.dataStore.getPlayerData(uid).ignoreClaims;
         } else if (!inheritNothing && parent != null) {
             return parent.checkBanned(uid);
         }
         return false;
+    }
+
+    /**
+     * Different to checkBanned as this doesn't check any permissions
+     * @param uid the player UUID to check
+     * @return true if the player has been added to the banned player, false otherwise.
+     */
+    public boolean isBanned(UUID uid) {
+        return bannedPlayerIds.contains(uid);
+    }
+
+    public boolean isPublicBanned() {
+        return publicIsBanned;
+    }
+
+    public void setPublicBanned(boolean isPublicBanned) {
+        this.publicIsBanned = isPublicBanned;
+    }
+
+    /**
+     * @return an unmodifiable view of the players banned from this claim
+     * @apiNote changes to banned players are reflected in this map. Care must be
+     * taken to not modify the underlying map when iterating.
+     */
+    public Set<UUID> getBannedPlayers() {
+        return unmodifiableBannedPlayerIds;
     }
 
     /**

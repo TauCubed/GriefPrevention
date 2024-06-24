@@ -1594,7 +1594,7 @@ public class GriefPrevention extends JavaPlugin
                         shortInfo = false;
                         break;
                     default:
-                        if (token.length() == 0) break;
+                        if (token.isEmpty()) break;
                         sendMessage(player, TextMode.Err, "Invalid argument: \"" + token + "\"");
                         return false;
                 }
@@ -1622,7 +1622,7 @@ public class GriefPrevention extends JavaPlugin
                 if (claim.parent == null) {
                     sb.append("  Children:");
                     shortInfo = shortInfo || !longInfo && claim.children.size() > 8;
-                    if (shortInfo || claim.children.size() == 0) {
+                    if (shortInfo || claim.children.isEmpty()) {
                         sb.append(" %d\n".formatted(claim.children.size()));
                     } else {
                         for (Claim child : claim.children) {
@@ -1683,10 +1683,11 @@ public class GriefPrevention extends JavaPlugin
             for (Claim claim : claims) {
                 if (claims.size() == 1 || claim.parent == null) { // do not ban from subdivisions when targeting all claims
                     if (targetId == null) { // public ban
-                        claim.publicIsBanned = true;
+                        claim.setPublicBanned(true);
                         dataStore.saveClaim(claim);
                         for (Player p : Bukkit.getOnlinePlayers()) {
-                            if (claim.contains(p.getLocation(), false, false) && claim.checkBanned(p.getUniqueId())) {
+                            Claim inClaim = GriefPrevention.instance.dataStore.getClaimAt(p.getLocation(), false, false, null);
+                            if (inClaim.checkBanned(p.getUniqueId())) {
                                 ejectPlayerFromBannedClaim(p);
                                 GriefPrevention.sendMessage(p, TextMode.Err, Messages.BannedFromClaim);
                             }
@@ -1695,16 +1696,19 @@ public class GriefPrevention extends JavaPlugin
                     } else { // player ban
                         if (claim.checkPermission(targetId, ClaimPermission.Manage, null) == null && !data.ignoreClaims && !player.getUniqueId().equals(claim.ownerID) || targetId.equals(claim.ownerID)) {
                             GriefPrevention.sendMessage(player, TextMode.Err, Messages.CannotBanManager, targetPlayer == null ? lookupPlayerName(targetId) : targetPlayer.getName(), getfriendlyLocationString(claim));
-                        } else if (!claim.bannedPlayerIds.contains(targetId)) {
-                            if (config_max_claimbanned_players >= 0 && claim.bannedPlayerIds.size() >= config_max_claimbanned_players) {
+                        } else if (!claim.isBanned(targetId)) {
+                            if (config_max_claimbanned_players >= 0 && claim.getBannedPlayers().size() >= config_max_claimbanned_players) {
                                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.TooManyPlayersClaimBanned, getfriendlyLocationString(claim));
                             } else {
-                                claim.bannedPlayerIds.add(targetId);
+                                claim.banUUID(targetId);
                                 claim.dropPermission(targetId.toString());
                                 dataStore.saveClaim(claim);
-                                if (targetPlayer != null && claim.contains(targetPlayer.getLocation(), false, false)) {
-                                    ejectPlayerFromBannedClaim(targetPlayer);
-                                    GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+                                if (targetPlayer != null) {
+                                    Claim inClaim = GriefPrevention.instance.dataStore.getClaimAt(targetPlayer.getLocation(), false, false, null);
+                                    if (inClaim.checkBanned(targetPlayer.getUniqueId())) {
+                                        ejectPlayerFromBannedClaim(targetPlayer);
+                                        GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
+                                    }
                                 }
                                 success = true;
                             }
@@ -1735,7 +1739,7 @@ public class GriefPrevention extends JavaPlugin
             }
 
             List<Claim> claims = claimAt == null ? data.getClaims() : Collections.singletonList(claimAt);
-            if (claims.size() == 0) {
+            if (claims.isEmpty()) {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.YouHaveNoClaims);
                 return true;
             }
@@ -1746,7 +1750,7 @@ public class GriefPrevention extends JavaPlugin
                     return true;
                 } else {
                     if (targetId == null) {
-                        claim.publicIsBanned = false;
+                        claim.setPublicBanned(false);
                         dataStore.saveClaim(claim);
                     } else if (claim.unbanUUID(targetId, true, false)) {
                         dataStore.saveClaim(claim);
@@ -1770,14 +1774,14 @@ public class GriefPrevention extends JavaPlugin
                 }
 
                 List<String> bannedPlayerList = new ArrayList<>();
-                for (UUID playerId : claim.bannedPlayerIds) {
+                for (UUID playerId : claim.getBannedPlayers()) {
                     String name = lookupPlayerName(playerId);
                     if (name == null) {
                         name = playerId.toString();
                     }
                     bannedPlayerList.add(name);
                 }
-                if (claim.publicIsBanned) bannedPlayerList.add("public");
+                if (claim.isPublicBanned()) bannedPlayerList.add("public");
 
                 GriefPrevention.sendMessage(player, TextMode.Success, Messages.BanListHeader);
                 StringBuilder sb = new StringBuilder();
@@ -3421,7 +3425,25 @@ public class GriefPrevention extends JavaPlugin
             playerData.lastClaim = claim;
             Block block = location.getBlock();
 
-            Supplier<String> supplier = claim.checkPermission(player, ClaimPermission.Build, new BlockPlaceEvent(block, block.getState(), block, new ItemStack(material), player, true, EquipmentSlot.HAND));
+            ItemStack itemStack;
+            if (material.isItem())
+            {
+                itemStack = new ItemStack(material);
+            }
+            else
+            {
+                var blockType = material.asBlockType();
+                if (blockType != null && blockType.hasItemType())
+                {
+                    itemStack = blockType.getItemType().createItemStack();
+                }
+                else
+                {
+                    itemStack = new ItemStack(Material.DIRT);
+                }
+            }
+
+            Supplier<String> supplier = claim.checkPermission(player, ClaimPermission.Build, new BlockPlaceEvent(block, block.getState(), block, itemStack, player, true, EquipmentSlot.HAND));
 
             if (supplier == null) return null;
 
