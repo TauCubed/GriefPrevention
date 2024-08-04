@@ -1687,7 +1687,7 @@ public class GriefPrevention extends JavaPlugin
                         dataStore.saveClaim(claim);
                         for (Player p : Bukkit.getOnlinePlayers()) {
                             Claim inClaim = GriefPrevention.instance.dataStore.getClaimAt(p.getLocation(), false, false, null);
-                            if (inClaim.checkBanned(p.getUniqueId())) {
+                            if (inClaim != null && inClaim.checkBanned(p.getUniqueId())) {
                                 ejectPlayerFromBannedClaim(p);
                                 GriefPrevention.sendMessage(p, TextMode.Err, Messages.BannedFromClaim);
                             }
@@ -1705,7 +1705,7 @@ public class GriefPrevention extends JavaPlugin
                                 dataStore.saveClaim(claim);
                                 if (targetPlayer != null) {
                                     Claim inClaim = GriefPrevention.instance.dataStore.getClaimAt(targetPlayer.getLocation(), false, false, null);
-                                    if (inClaim.checkBanned(targetPlayer.getUniqueId())) {
+                                    if (inClaim != null && inClaim.checkBanned(targetPlayer.getUniqueId())) {
                                         ejectPlayerFromBannedClaim(targetPlayer);
                                         GriefPrevention.sendMessage(player, TextMode.Err, Messages.BannedFromClaim);
                                     }
