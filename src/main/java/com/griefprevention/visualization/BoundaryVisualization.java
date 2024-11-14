@@ -1,11 +1,11 @@
 package com.griefprevention.visualization;
 
-import com.griefprevention.events.BoundaryVisualizationEvent;
-import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.CustomLogEntryTypes;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.PlayerData;
+import com.griefprevention.events.BoundaryVisualizationEvent;
+import com.griefprevention.util.IntVector;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -18,11 +18,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A representation of a system for displaying rectangular {@link Boundary Boundaries} to {@link Player Players}.
  * <p>
- * This is used to display claim areas, visualize affected area during nature restoration, and more.
+ * This is used to display claim areas, conflicting claims, and more.
  */
 public abstract class BoundaryVisualization
 {

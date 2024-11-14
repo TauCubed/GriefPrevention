@@ -20,19 +20,40 @@ package me.ryanhamshire.GriefPrevention;
 
 import com.griefprevention.util.command.MonitorableCommand;
 import com.griefprevention.util.command.MonitoredCommands;
-import com.griefprevention.visualization.VisualizationType;
 import com.griefprevention.visualization.*;
+import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.events.ClaimInspectionEvent;
 import me.ryanhamshire.GriefPrevention.tags.GPTags;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import org.bukkit.*;
+import org.bukkit.BanList;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.Tag;
+import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Waterlogged;
-import org.bukkit.entity.*;
+import org.bukkit.entity.AbstractHorse;
+import org.bukkit.entity.Animals;
+import org.bukkit.entity.Creature;
+import org.bukkit.entity.Donkey;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Fish;
+import org.bukkit.entity.Hanging;
+import org.bukkit.entity.Llama;
+import org.bukkit.entity.Mule;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Tameable;
+import org.bukkit.entity.Vehicle;
 import org.bukkit.entity.minecart.PoweredMinecart;
 import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.event.EventHandler;
@@ -47,12 +68,21 @@ import org.bukkit.event.raid.RaidTriggerEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.profile.PlayerProfile;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -624,7 +654,8 @@ class PlayerEventHandler implements Listener
                             if (info2.address.toString().equals(address))
                             {
                                 OfflinePlayer bannedAccount = instance.getServer().getOfflinePlayer(info2.bannedAccountName);
-                                instance.getServer().getBanList(BanList.Type.NAME).pardon(bannedAccount.getName());
+                                BanList<PlayerProfile> banList = instance.getServer().getBanList(BanList.Type.PROFILE);
+                                banList.pardon(bannedAccount.getPlayerProfile());
                                 this.tempBannedIps.remove(j--);
                             }
                         }
@@ -1071,9 +1102,8 @@ class PlayerEventHandler implements Listener
         PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
 
         //if entity is tameable and has an owner, apply special rules
-        if (entity instanceof Tameable)
+        if (entity instanceof Tameable tameable)
         {
-            Tameable tameable = (Tameable) entity;
             if (tameable.isTamed())
             {
                 if (tameable.getOwner() != null)
@@ -1083,15 +1113,6 @@ class PlayerEventHandler implements Listener
                     //if the player interacting is the owner or an admin in ignore claims mode, always allow
                     if (player.getUniqueId().equals(ownerID) || playerData.ignoreClaims)
                     {
-                        //if giving away pet, do that instead
-                        if (playerData.petGiveawayRecipient != null)
-                        {
-                            tameable.setOwner(playerData.petGiveawayRecipient);
-                            playerData.petGiveawayRecipient = null;
-                            GriefPrevention.sendMessage(player, TextMode.Success, Messages.PetGiveawayConfirmation);
-                            event.setCancelled(true);
-                        }
-
                         return;
                     }
                     if (!instance.pvpRulesApply(entity.getLocation().getWorld()) || instance.config_pvp_protectPets)
@@ -1124,10 +1145,10 @@ class PlayerEventHandler implements Listener
         //don't allow interaction with item frames or armor stands in claimed areas without build permission
         if (entity.getType() == EntityType.ARMOR_STAND || entity instanceof Hanging)
         {
-            String noBuildReason = instance.allowBuild(player, entity.getLocation(), Material.ITEM_FRAME);
+            Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, entity.getLocation(), ClaimPermission.Build, event);
             if (noBuildReason != null)
             {
-                GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+                GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
                 event.setCancelled(true);
                 return;
             }
@@ -1346,10 +1367,10 @@ class PlayerEventHandler implements Listener
         }
 
         //make sure the player is allowed to build at the location
-        String noBuildReason = instance.allowBuild(player, block.getLocation(), Material.WATER);
+        Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, block.getLocation(), ClaimPermission.Build, bucketEvent);
         if (noBuildReason != null)
         {
-            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
             bucketEvent.setCancelled(true);
             return;
         }
@@ -1445,22 +1466,22 @@ class PlayerEventHandler implements Listener
 
         if (!instance.claimsEnabledForWorld(block.getWorld())) return;
 
+        //exemption for cow milking (permissions will be handled by player interact with entity event instead)
+        Material blockType = block.getType();
+        if (blockType == Material.AIR)
+            return;
+        if (blockType.isSolid())
+        {
+            BlockData blockData = block.getBlockData();
+            if (!(blockData instanceof Waterlogged) || !((Waterlogged) blockData).isWaterlogged())
+                return;
+        }
+
         //make sure the player is allowed to build at the location
-        String noBuildReason = instance.allowBuild(player, block.getLocation(), Material.AIR);
+        Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, block.getLocation(), ClaimPermission.Build, bucketEvent);
         if (noBuildReason != null)
         {
-            //exemption for cow milking (permissions will be handled by player interact with entity event instead)
-            Material blockType = block.getType();
-            if (blockType == Material.AIR)
-                return;
-            if (blockType.isSolid())
-            {
-                BlockData blockData = block.getBlockData();
-                if (!(blockData instanceof Waterlogged) || !((Waterlogged) blockData).isWaterlogged())
-                    return;
-            }
-
-            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
             bucketEvent.setCancelled(true);
             return;
         }
@@ -1477,14 +1498,14 @@ class PlayerEventHandler implements Listener
         }
 
         Player player = event.getPlayer();
-        String denial = instance.allowBuild(player, event.getSign().getLocation(), event.getSign().getType());
+        Supplier<String> denial = ProtectionHelper.checkPermission(player, event.getSign().getLocation(), ClaimPermission.Build, event);
 
         // If user is allowed to build, do nothing.
         if (denial == null)
             return;
 
         // If user is not allowed to build, prevent sign UI opening and send message.
-        GriefPrevention.sendMessage(player, TextMode.Err, denial);
+        GriefPrevention.sendMessage(player, TextMode.Err, denial.get());
         event.setCancelled(true);
     }
 
@@ -1731,13 +1752,10 @@ class PlayerEventHandler implements Listener
                     || materialInHand == Material.HONEYCOMB
                     || GPTags.DYES.isTagged(materialInHand)))
             {
-                String noBuildReason = instance
-                        .allowBuild(player, clickedBlock
-                                        .getLocation(),
-                                clickedBlockType);
+                Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, event.getClickedBlock().getLocation(), ClaimPermission.Build, event);
                 if (noBuildReason != null)
                 {
-                    GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+                    GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
                     event.setCancelled(true);
                 }
 
@@ -1960,174 +1978,14 @@ class PlayerEventHandler implements Listener
                 return;
             }
 
-            //if the player is in restore nature mode, do only that
-            UUID playerID = player.getUniqueId();
-            playerData = this.dataStore.getPlayerData(player.getUniqueId());
-            if (playerData.shovelMode == ShovelMode.RestoreNature || playerData.shovelMode == ShovelMode.RestoreNatureAggressive)
-            {
-                //if the clicked block is in a claim, visualize that claim and deliver an error message
-                Claim claim = this.dataStore.getClaimAt(clickedBlock.getLocation(), true /*ignore height*/, playerData.lastClaim);
-                if (claim != null)
-                {
-                    GriefPrevention.sendMessage(player, TextMode.Err, Messages.BlockClaimed, claim.getOwnerName());
-                    BoundaryVisualization.visualizeClaim(player, claim, VisualizationType.CONFLICT_ZONE, clickedBlock);
-                    return;
-                }
-
-                //figure out which chunk to repair
-                Chunk chunk = player.getWorld().getChunkAt(clickedBlock.getLocation());
-                //start the repair process
-
-                //set boundaries for processing
-                int miny = clickedBlock.getY();
-
-                //if not in aggressive mode, extend the selection down to a little below sea level
-                if (!(playerData.shovelMode == ShovelMode.RestoreNatureAggressive))
-                {
-                    if (miny > instance.getSeaLevel(chunk.getWorld()) - 10)
-                    {
-                        miny = instance.getSeaLevel(chunk.getWorld()) - 10;
-                    }
-                }
-
-                instance.restoreChunk(chunk, miny, playerData.shovelMode == ShovelMode.RestoreNatureAggressive, 0, player);
-
-                return;
-            }
-
-            //if in restore nature fill mode
-            if (playerData.shovelMode == ShovelMode.RestoreNatureFill)
-            {
-                ArrayList<Material> allowedFillBlocks = new ArrayList<>();
-                Environment environment = clickedBlock.getWorld().getEnvironment();
-                if (environment == Environment.NETHER)
-                {
-                    allowedFillBlocks.add(Material.NETHERRACK);
-                }
-                else if (environment == Environment.THE_END)
-                {
-                    allowedFillBlocks.add(Material.END_STONE);
-                }
-                else
-                {
-                    allowedFillBlocks.add(Material.SHORT_GRASS);
-                    allowedFillBlocks.add(Material.DIRT);
-                    allowedFillBlocks.add(Material.STONE);
-                    allowedFillBlocks.add(Material.SAND);
-                    allowedFillBlocks.add(Material.SANDSTONE);
-                    allowedFillBlocks.add(Material.ICE);
-                }
-
-                Block centerBlock = clickedBlock;
-
-                int maxHeight = centerBlock.getY();
-                int minx = centerBlock.getX() - playerData.fillRadius;
-                int maxx = centerBlock.getX() + playerData.fillRadius;
-                int minz = centerBlock.getZ() - playerData.fillRadius;
-                int maxz = centerBlock.getZ() + playerData.fillRadius;
-                int minHeight = maxHeight - 10;
-                minHeight = Math.max(minHeight, clickedBlock.getWorld().getMinHeight());
-
-                Claim cachedClaim = null;
-                for (int x = minx; x <= maxx; x++)
-                {
-                    for (int z = minz; z <= maxz; z++)
-                    {
-                        //circular brush
-                        Location location = new Location(centerBlock.getWorld(), x, centerBlock.getY(), z);
-                        if (location.distance(centerBlock.getLocation()) > playerData.fillRadius) continue;
-
-                        //default fill block is initially the first from the allowed fill blocks list above
-                        Material defaultFiller = allowedFillBlocks.get(0);
-
-                        //prefer to use the block the player clicked on, if it's an acceptable fill block
-                        if (allowedFillBlocks.contains(centerBlock.getType()))
-                        {
-                            defaultFiller = centerBlock.getType();
-                        }
-
-                        //if the player clicks on water, try to sink through the water to find something underneath that's useful for a filler
-                        else if (centerBlock.getType() == Material.WATER)
-                        {
-                            Block block = centerBlock.getWorld().getBlockAt(centerBlock.getLocation());
-                            while (!allowedFillBlocks.contains(block.getType()) && block.getY() > centerBlock.getY() - 10)
-                            {
-                                block = block.getRelative(BlockFace.DOWN);
-                            }
-                            if (allowedFillBlocks.contains(block.getType()))
-                            {
-                                defaultFiller = block.getType();
-                            }
-                        }
-
-                        //fill bottom to top
-                        for (int y = minHeight; y <= maxHeight; y++)
-                        {
-                            Block block = centerBlock.getWorld().getBlockAt(x, y, z);
-
-                            //respect claims
-                            Claim claim = this.dataStore.getClaimAt(block.getLocation(), false, cachedClaim);
-                            if (claim != null)
-                            {
-                                cachedClaim = claim;
-                                break;
-                            }
-
-                            //only replace air, spilling water, snow, long grass
-                            if (block.getType() == Material.AIR || block.getType() == Material.SNOW || (block.getType() == Material.WATER && ((Levelled) block.getBlockData()).getLevel() != 0) || block.getType() == Material.SHORT_GRASS)
-                            {
-                                //if the top level, always use the default filler picked above
-                                if (y == maxHeight)
-                                {
-                                    block.setType(defaultFiller);
-                                }
-
-                                //otherwise look to neighbors for an appropriate fill block
-                                else
-                                {
-                                    Block eastBlock = block.getRelative(BlockFace.EAST);
-                                    Block westBlock = block.getRelative(BlockFace.WEST);
-                                    Block northBlock = block.getRelative(BlockFace.NORTH);
-                                    Block southBlock = block.getRelative(BlockFace.SOUTH);
-
-                                    //first, check lateral neighbors (ideally, want to keep natural layers)
-                                    if (allowedFillBlocks.contains(eastBlock.getType()))
-                                    {
-                                        block.setType(eastBlock.getType());
-                                    }
-                                    else if (allowedFillBlocks.contains(westBlock.getType()))
-                                    {
-                                        block.setType(westBlock.getType());
-                                    }
-                                    else if (allowedFillBlocks.contains(northBlock.getType()))
-                                    {
-                                        block.setType(northBlock.getType());
-                                    }
-                                    else if (allowedFillBlocks.contains(southBlock.getType()))
-                                    {
-                                        block.setType(southBlock.getType());
-                                    }
-
-                                    //if all else fails, use the default filler selected above
-                                    else
-                                    {
-                                        block.setType(defaultFiller);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                return;
-            }
-
             //if the player doesn't have claims permission, don't do anything
             if (!player.hasPermission("griefprevention.createclaims"))
             {
                 GriefPrevention.sendMessage(player, TextMode.Err, Messages.NoCreateClaimPermission);
                 return;
             }
+
+            playerData = this.dataStore.getPlayerData(player.getUniqueId());
 
             //if he's resizing a claim and that claim hasn't been deleted since he started resizing it
             if (playerData.claimResizing != null && playerData.claimResizing.inDataStore)
@@ -2372,6 +2230,8 @@ class PlayerEventHandler implements Listener
                         return;
                     }
                 }
+
+                UUID playerID = player.getUniqueId();
 
                 //if not an administrative claim, verify the player has enough claim blocks for this new claim
                 if (playerData.shovelMode != ShovelMode.Admin && playerData.shovelMode != ShovelMode.Admin3d)

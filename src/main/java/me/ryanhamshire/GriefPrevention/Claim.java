@@ -20,7 +20,11 @@ package me.ryanhamshire.GriefPrevention;
 
 import me.ryanhamshire.GriefPrevention.events.ClaimPermissionCheckEvent;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -964,63 +968,6 @@ public class Claim
         return thisCorner.getWorld().getName().compareTo(otherCorner.getWorld().getName()) < 0;
     }
 
-
-    long getPlayerInvestmentScore()
-    {
-        //decide which blocks will be considered player placed
-        Location lesserBoundaryCorner = this.getLesserBoundaryCorner();
-        Set<Material> playerBlocks = RestoreNatureProcessingTask.getPlayerBlocks(world.getEnvironment(), lesserBoundaryCorner.getBlock().getBiome());
-
-        //scan the claim for player placed blocks
-        double score = 0;
-
-        boolean creativeMode = GriefPrevention.instance.creativeRulesApply(world);
-
-        for (int x = this.bounds.getMinX(); x <= this.bounds.getMaxX(); x++)
-        {
-            for (int z = this.bounds.getMinZ(); z <= this.bounds.getMaxZ(); z++)
-            {
-                int y = this.bounds.getMinY();
-                for (; y < GriefPrevention.instance.getSeaLevel(this.world) - 5; y++)
-                {
-                    Block block = this.world.getBlockAt(x, y, z);
-                    if (playerBlocks.contains(block.getType()))
-                    {
-                        if (block.getType() == Material.CHEST && !creativeMode)
-                        {
-                            score += 10;
-                        }
-                        else
-                        {
-                            score += .5;
-                        }
-                    }
-                }
-
-                for (; y < this.world.getMaxHeight(); y++)
-                {
-                    Block block = this.world.getBlockAt(x, y, z);
-                    if (playerBlocks.contains(block.getType()))
-                    {
-                        if (block.getType() == Material.CHEST && !creativeMode)
-                        {
-                            score += 10;
-                        }
-                        else if (creativeMode && (block.getType() == Material.LAVA))
-                        {
-                            score -= 10;
-                        }
-                        else
-                        {
-                            score += 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        return (long) score;
-    }
 
     public ArrayList<Chunk> getChunks()
     {

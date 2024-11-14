@@ -23,11 +23,18 @@ import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Tag;
+import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.PistonMoveReaction;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Lightable;
 import org.bukkit.block.data.type.Chest;
@@ -42,8 +49,21 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.*;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockDispenseEvent;
+import org.bukkit.event.block.BlockFertilizeEvent;
+import org.bukkit.event.block.BlockFormEvent;
+import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.event.block.BlockMultiPlaceEvent;
+import org.bukkit.event.block.BlockPistonEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
@@ -101,9 +121,10 @@ public class BlockEventHandler implements Listener {
         Block block = breakEvent.getBlock();
 
         //make sure the player is allowed to break at the location
-        String noBuildReason = GriefPrevention.instance.allowBreak(player, block, block.getLocation(), breakEvent);
-        if (noBuildReason != null) {
-            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+        Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, block.getLocation(), ClaimPermission.Build, breakEvent);
+        if (noBuildReason != null)
+        {
+            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
             breakEvent.setCancelled(true);
             return;
         }
@@ -117,9 +138,10 @@ public class BlockEventHandler implements Listener {
 
         if (player == null || sign == null) return;
 
-        String noBuildReason = GriefPrevention.instance.allowBuild(player, sign.getLocation(), sign.getType());
-        if (noBuildReason != null) {
-            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+        Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, sign.getLocation(), ClaimPermission.Build, event);
+        if (noBuildReason != null)
+        {
+            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
             event.setCancelled(true);
             return;
         }
@@ -175,10 +197,12 @@ public class BlockEventHandler implements Listener {
         if (!GriefPrevention.instance.claimsEnabledForWorld(placeEvent.getBlock().getWorld())) return;
 
         //make sure the player is allowed to build at the location
-        for (BlockState block : placeEvent.getReplacedBlockStates()) {
-            String noBuildReason = GriefPrevention.instance.allowBuild(player, block.getLocation(), block.getType());
-            if (noBuildReason != null) {
-                GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+        for (BlockState block : placeEvent.getReplacedBlockStates())
+        {
+            Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, block.getLocation(), ClaimPermission.Build, placeEvent);
+            if (noBuildReason != null)
+            {
+                GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
                 placeEvent.setCancelled(true);
                 return;
             }
@@ -224,8 +248,9 @@ public class BlockEventHandler implements Listener {
         if (!GriefPrevention.instance.claimsEnabledForWorld(placeEvent.getBlock().getWorld())) return;
 
         //make sure the player is allowed to build at the location
-        String noBuildReason = GriefPrevention.instance.allowBuild(player, block.getLocation(), block.getType());
-        if (noBuildReason != null) {
+        Supplier<String> noBuildReason = ProtectionHelper.checkPermission(player, block.getLocation(), ClaimPermission.Build, placeEvent);
+        if (noBuildReason != null)
+        {
             // Allow players with container trust to place books in lecterns
             PlayerData playerData = this.dataStore.getPlayerData(player.getUniqueId());
             Claim claim = this.dataStore.getClaimAt(block.getLocation(), false, playerData.lastClaim);
@@ -241,7 +266,7 @@ public class BlockEventHandler implements Listener {
                     return;
                 }
             }
-            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason);
+            GriefPrevention.sendMessage(player, TextMode.Err, noBuildReason.get());
             placeEvent.setCancelled(true);
             return;
         }
