@@ -23,29 +23,19 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.griefprevention.commands.ClaimCommand;
 import com.griefprevention.metrics.MetricsHandler;
+import com.griefprevention.protection.ProtectionHelper;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationProviders;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.DataStore.NoTransferException;
-import me.ryanhamshire.GriefPrevention.events.PreventBlockBreakEvent;
 import me.ryanhamshire.GriefPrevention.events.SaveTrappedPlayerEvent;
 import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 import me.ryanhamshire.GriefPrevention.listeners.PacketListeners;
 import me.ryanhamshire.GriefPrevention.registry.Registries;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
 import me.ryanhamshire.GriefPrevention.util.SafeTeleports;
-import org.bukkit.BanList;
+import org.bukkit.*;
 import org.bukkit.BanList.Type;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.FluidCollisionMode;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Statistic;
-import org.bukkit.World;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -1574,6 +1564,10 @@ public class GriefPrevention extends JavaPlugin
                     case "id":
                         String[] id = token.split("\\s");
                         if (id.length == 2) {
+                            if (!player.hasPermission("griefprevention.claiminfo.byid")) {
+                                sendMessage(player, TextMode.Err, "You do not have permission to lookup claims by ID.");
+                                return true;
+                            }
                             try {
                                 claim = dataStore.getClaim(Integer.parseInt(id[1]));
                                 if (claim == null) {
@@ -1966,12 +1960,6 @@ public class GriefPrevention extends JavaPlugin
                     else
                     {
                         this.dataStore.deleteClaim(claim, true, true);
-
-                        //if in a creative mode world, /restorenature the claim
-                        if (GriefPrevention.instance.creativeRulesApply(claim.getWorld()) || GriefPrevention.instance.config_claims_survivalAutoNatureRestoration)
-                        {
-                            GriefPrevention.instance.restoreClaim(claim, 0);
-                        }
 
                         GriefPrevention.sendMessage(player, TextMode.Success, Messages.DeleteSuccess);
                         GriefPrevention.AddLogEntry(player.getName() + " deleted " + claim.getOwnerName() + "'s claim at " + GriefPrevention.getfriendlyLocationString(claim), CustomLogEntryTypes.AdminActivity);

@@ -251,13 +251,16 @@ public abstract class BlockBoundaryVisualization extends BoundaryVisualization
      * @see #isValidFloor(Block)
      */
     public int findFloor(World world, int x, int y, int z, int minY, int maxY, int def) {
-        if (isValidFloor(world, y, x, y, z)) return y;
+        if (isValidFloor(world, y, x, y, z))
+            return y;
         // search up and down within the specified limits
         int ly = y, gy = y;
         int maxAbs = Math.max(Math.abs(minY), Math.abs(maxY));
         for (int i = 0; i < maxAbs; i++) {
-            if (ly > minY && isValidFloor(world, y, x, --ly, z)) return ly;
-            if (gy < maxY && isValidFloor(world, y, x, ++gy, z)) return gy;
+            if (ly > minY && isValidFloor(world, y, x, --ly, z))
+                return ly;
+            if (gy < maxY && isValidFloor(world, y, x, ++gy, z))
+                return gy;
         }
         // if no floor is found return the default value
         return def;

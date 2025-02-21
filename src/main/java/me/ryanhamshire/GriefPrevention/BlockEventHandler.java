@@ -19,22 +19,16 @@
 package me.ryanhamshire.GriefPrevention;
 
 import com.griefprevention.events.BoundaryVisualizationEvent;
+import com.griefprevention.protection.ProtectionHelper;
 import com.griefprevention.visualization.Boundary;
 import com.griefprevention.visualization.BoundaryVisualization;
 import com.griefprevention.visualization.VisualizationType;
 import me.ryanhamshire.GriefPrevention.util.BoundingBox;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Tag;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.World.Environment;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.PistonMoveReaction;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Lightable;
 import org.bukkit.block.data.type.Chest;
@@ -44,26 +38,9 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
-import org.bukkit.event.Cancellable;
-import org.bukkit.event.Event;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockBurnEvent;
-import org.bukkit.event.block.BlockDispenseEvent;
-import org.bukkit.event.block.BlockFertilizeEvent;
-import org.bukkit.event.block.BlockFormEvent;
-import org.bukkit.event.block.BlockFromToEvent;
-import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.*;
+import org.bukkit.event.block.*;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
-import org.bukkit.event.block.BlockMultiPlaceEvent;
-import org.bukkit.event.block.BlockPistonEvent;
-import org.bukkit.event.block.BlockPistonExtendEvent;
-import org.bukkit.event.block.BlockPistonRetractEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.block.BlockSpreadEvent;
-import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
@@ -610,12 +587,12 @@ public class BlockEventHandler implements Listener {
         }
     }
 
-    public static void detonatePiston(Block pissOff, Claim from, Claim to) {
+    public static void detonatePiston(Block piston, Claim from, Claim to) {
         if (!GriefPrevention.instance.config_breakPistons) return;
-        detonatePiston(pissOff, from, player -> {
+        detonatePiston(piston, from, player -> {
             GriefPrevention.sendMessage(player, TextMode.Err, Messages.PistonExploded,
-                    "%d, %d, %d".formatted(pissOff.getX(), pissOff.getY(), pissOff.getZ()), GriefPrevention.getfriendlyLocationString(to));
-            BoundaryVisualization.callAndVisualize(new BoundaryVisualizationEvent(player, List.of(new Boundary(to, VisualizationType.CONFLICT_ZONE)), pissOff.getY()));
+                    "%d, %d, %d".formatted(piston.getX(), piston.getY(), piston.getZ()), GriefPrevention.getfriendlyLocationString(to));
+            BoundaryVisualization.callAndVisualize(new BoundaryVisualizationEvent(player, List.of(new Boundary(to, VisualizationType.CONFLICT_ZONE)), piston.getY()));
         });
     }
 

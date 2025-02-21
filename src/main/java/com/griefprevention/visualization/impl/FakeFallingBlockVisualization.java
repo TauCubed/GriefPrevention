@@ -51,7 +51,7 @@ public class FakeFallingBlockVisualization extends EntityBlockBoundaryVisualizat
                     addFallingElement(Material.ORANGE_STAINED_GLASS.createBlockData(), ScoreboardColors.getTeamFor(ChatColor.GOLD));
             case SUBDIVISION ->
                     addFallingElement(Material.WHITE_STAINED_GLASS.createBlockData(), ScoreboardColors.getTeamFor(ChatColor.WHITE));
-            case INITIALIZE_ZONE, NATURE_RESTORATION_ZONE ->
+            case INITIALIZE_ZONE ->
                     addFallingElement(Material.LIGHT_BLUE_STAINED_GLASS.createBlockData(), ScoreboardColors.getTeamFor(ChatColor.AQUA));
             case CONFLICT_ZONE ->
                     addFallingElement(Material.RED_STAINED_GLASS.createBlockData(), ScoreboardColors.getTeamFor(ChatColor.RED));

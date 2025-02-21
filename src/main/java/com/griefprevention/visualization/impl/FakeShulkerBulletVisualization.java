@@ -30,7 +30,7 @@ public class FakeShulkerBulletVisualization extends EntityBlockBoundaryVisualiza
                     addBulletElement(ScoreboardColors.getTeamFor(ChatColor.GOLD));
             case SUBDIVISION ->
                     addBulletElement(ScoreboardColors.getTeamFor(ChatColor.WHITE));
-            case INITIALIZE_ZONE, NATURE_RESTORATION_ZONE ->
+            case INITIALIZE_ZONE ->
                     addBulletElement(ScoreboardColors.getTeamFor(ChatColor.AQUA));
             case CONFLICT_ZONE ->
                     addBulletElement(ScoreboardColors.getTeamFor(ChatColor.RED));
