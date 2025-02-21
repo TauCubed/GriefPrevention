@@ -274,24 +274,20 @@ public class Claim
     }
 
     //measurements.  all measurements are in blocks
-    public int getArea()
-    {
-        int claimLength = this.bounds.getLength() + 1;
-        int claimWidth = this.bounds.getWidth() + 1;
-
-        return claimLength * claimWidth;
+    public int getArea() {
+        return (int) Math.min(Integer.MAX_VALUE, this.bounds.getArea());
     }
 
     // backwards, use getBounds getLength
     @Deprecated(forRemoval = true)
     public int getWidth() {
-        return bounds.getLength() + 1;
+        return bounds.getLength();
     }
 
     // backwards and not anything to do with Y, use getBounds getWidth
     @Deprecated(forRemoval = true)
     public int getHeight() {
-        return bounds.getWidth() + 1;
+        return bounds.getWidth();
     }
 
     public boolean getSubclaimRestrictions()
