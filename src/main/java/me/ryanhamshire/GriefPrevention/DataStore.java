@@ -747,10 +747,12 @@ public abstract class DataStore
                     for (int j = 0; j < claim.children.size(); j++) {
                         Claim subdivision = claim.children.get(j);
                         // never ignore height of 3d subclaims
-                        if (subdivision.inDataStore && subdivision.contains(location, !subdivision.is3D() && ignoreHeight, false)) return subdivision;
+                        if (subdivision.inDataStore && subdivision.contains(location, !subdivision.is3D() && ignoreHeight, false))
+                            return subdivision;
                     }
                 }
-                if (claim.contains(location, !claim.is3D() && ignoreHeight, false)) return claim;
+                if (claim.contains(location, !claim.is3D() && ignoreHeight, false))
+                    return claim;
             }
         }
 

@@ -1554,7 +1554,7 @@ public class GriefPrevention extends JavaPlugin
                 return true;
             }
 
-            Claim claim = dataStore.getClaimAt(player.getLocation(), false, null);
+            Claim claim = dataStore.getClaimAt(player.getLocation(), true, null);
             String[] tokens = Joiner.on(' ').join(args).split("--?");
             boolean shortInfo = false;
             boolean longInfo = false;
