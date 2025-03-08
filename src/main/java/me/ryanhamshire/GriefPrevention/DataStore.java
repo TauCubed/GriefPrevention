@@ -924,6 +924,11 @@ public abstract class DataStore
                 result.claim = parent;
                 return result;
             }
+            if (parent.children.size() > 500) {
+                result.succeeded = false;
+                result.claim = parent;
+                return result;
+            }
         }
 
         //claims can't be made outside the world border
