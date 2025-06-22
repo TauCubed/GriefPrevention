@@ -206,7 +206,7 @@ public class ClaimCommand extends CommandHandler
     {
         return playerData.getClaims().size() < 2
                 && player.getGameMode() != GameMode.CREATIVE
-                && player.getInventory().getItemInMainHand().getType() != plugin.config_claims_modificationTool;
+                && !plugin.isClaimModificationTool(player.getInventory().getItemInMainHand());
     }
 
     private int getClaimMinRadius()

@@ -46,10 +46,15 @@ public class BoundaryVisualizationEvent extends PlayerEvent
     public static VisualizationProvider getVisualizationProviderFor(Player player) {
         String visProvider = GriefPrevention.instance.config_visualization_provider;
         // bedrock players don't have glowing entities :(
-        if (player.getName().contains(".") && (visProvider.equals(VisualizationProviders.FAKE_FALLING_BLOCK.getKey()) || visProvider.equals(VisualizationProviders.FAKE_SHULKER_BULLET.getKey()))) {
+        if (isGeyserPlayer(player) && (visProvider.equals(VisualizationProviders.FAKE_FALLING_BLOCK.getKey()) || visProvider.equals(VisualizationProviders.FAKE_SHULKER_BULLET.getKey()))) {
             visProvider = VisualizationProviders.FAKE_BLOCK.getKey();
         }
         return Registries.VISUALIZATION_PROVIDERS.get(visProvider);
+    }
+
+    public static boolean isGeyserPlayer(Player player) {
+        // in geyser + floodgate all MSB are zeroed
+        return player.getUniqueId().getMostSignificantBits() == 0;
     }
 
     /**
